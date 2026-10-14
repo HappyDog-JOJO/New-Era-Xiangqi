@@ -1,0 +1,19 @@
+# Godot 自动生成的导入缓存与编辑器状态，不要提交
+.godot/
+*.translation
+
+# 导出产物
+build/
+export/
+*.exe
+*.pck
+*.zip
+
+# 编辑器本地设置
+*.import
+export_presets.cfg
+
+# 截图工具的产物
+_shot*.png
+_zoom_*.png
+_z_*.png

@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>兵符 · 可打印原型（v0.5）</title>
+<style>
+  :root{
+    --ink:#2b2b2b; --wood:#f6ecd8; --line:#3a2a18; --gold:#b8860b;
+    --red:#b4262c; --blk:#1d1d1d; --blue:#1f5fa8;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:#5a5a5a; font-family:"Source Han Serif SC","Noto Serif CJK SC","Songti SC","SimSun",serif;
+    color:var(--ink); -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .toolbar{
+    position:sticky; top:0; z-index:99; background:#222; color:#eee; padding:10px 16px;
+    font-family:system-ui,sans-serif; font-size:13px; display:flex; gap:14px; align-items:center; flex-wrap:wrap;
+  }
+  .toolbar button{
+    font:inherit; padding:6px 14px; border-radius:6px; border:1px solid #666; background:#3a3a3a; color:#fff; cursor:pointer;
+  }
+  .toolbar button:hover{background:#4a4a4a}
+  .page{
+    width:210mm; min-height:297mm; padding:8mm; margin:8mm auto; background:#fff;
+    box-shadow:0 4px 18px rgba(0,0,0,.4); position:relative; overflow:hidden;
+  }
+  .page.landscape{ width:297mm; min-height:210mm; }
+  h1{font-size:30pt; margin:6mm 0 2mm; letter-spacing:.08em}
+  h2{font-size:15pt; margin:0 0 4mm; padding-bottom:2mm; border-bottom:1.5pt solid var(--line); letter-spacing:.05em}
+  h3{font-size:11pt; margin:5mm 0 2mm}
+  p,li{font-size:10pt; line-height:1.65}
+  .sub{font-size:11pt; color:#666; letter-spacing:.2em}
+  .note{font-size:8.5pt; color:#555; line-height:1.5}
+  .cap{font-size:9pt; color:#444; text-align:center; margin-top:2mm}
+  .board{display:block; width:100%; height:auto}
+  .board-wrap{width:170mm; margin:0 auto}
+  .board-wrap.wide{width:250mm}
+  .row{display:flex; gap:6mm; align-items:flex-start}
+  .col{flex:1}
+  .box{border:1pt solid #bbb; border-radius:2mm; padding:3mm 4mm; background:#fafafa}
+  table{border-collapse:collapse; width:100%; font-size:9pt}
+  th,td{border:.6pt solid #bbb; padding:1.6mm 2mm; text-align:left; vertical-align:top}
+  th{background:#eee}
+  code{background:#f0f0f0; padding:0 .8mm; border-radius:1mm; font-family:Consolas,monospace}
+  .kbd{border:.6pt solid #999; border-bottom-width:1.6pt; border-radius:1mm; padding:0 1.4mm; font-size:8.5pt; background:#f7f7f7}
+
+  /* ---------- cards ---------- */
+  .sheet{display:grid; grid-template-columns:repeat(4,45mm); gap:3mm; justify-content:center}
+  .card{
+    width:45mm; height:64mm; border:.7mm solid #2b2b2b; border-radius:2.5mm;
+    padding:2mm 2.4mm; background:#fff; display:flex; flex-direction:column;
+    position:relative; overflow:hidden; page-break-inside:avoid; break-inside:avoid;
+  }
+  .card .hd{display:flex; justify-content:space-between; align-items:baseline; gap:1mm}
+  .card .nm{font-size:11pt; font-weight:700; letter-spacing:.06em}
+  .card .cost{font-size:8pt; font-family:system-ui,sans-serif; border:.5mm solid #2b2b2b; border-radius:1mm; padding:0 1.2mm; white-space:nowrap}
+  .card .tag{font-size:7pt; color:#777; margin-top:.6mm; font-family:system-ui,sans-serif}
+  .card .big{flex:1; display:flex; align-items:center; justify-content:center; font-size:40pt; line-height:1}
+  .card .fx{font-size:8pt; line-height:1.45; border-top:.4mm dotted #999; padding-top:1.4mm}
+  .card .ft{font-size:7pt; color:#666; line-height:1.35; margin-top:1mm}
+  .card .stamp{
+    position:absolute; right:1.6mm; bottom:1.4mm; font-size:6.5pt; color:#bbb;
+    font-family:system-ui,sans-serif; letter-spacing:.05em;
+  }
+  .card.pawn{border-color:#7a4a1e}
+  .card.pawn .big{font-size:46pt; color:#7a4a1e}
+  .card.unit{border-color:#2e7d4f}
+  .card.unit .big{color:#2e7d4f}
+  .card.unit .nm{color:#2e7d4f}
+  .card.gear{border-color:#1f5fa8}
+  .card.gear .big{color:#1f5fa8}
+  .card.sc{border-color:#6a3d9a}
+  .card.sc .nm{color:#6a3d9a}
+  .card.sc .cost{color:#6a3d9a; border-color:#6a3d9a}
+  .card.blank{border-style:dashed; border-color:#ccc}
+  .card.blank .big{font-size:9pt; color:#bbb; font-family:system-ui,sans-serif}
+
+  /* ---------- tokens ---------- */
+  .tokrow{display:flex; gap:8mm; flex-wrap:wrap; align-items:center; margin:4mm 0}
+  .tok{
+    width:34mm; height:34mm; border-radius:50%; border:1mm solid; display:flex;
+    flex-direction:column; align-items:center; justify-content:center; background:#fff;
+  }
+  .tok .g{font-size:26pt; line-height:1}
+  .tok .l{font-size:7pt; color:#666; font-family:system-ui,sans-serif}
+  .tok.r{border-color:var(--red); color:var(--red)}
+  .tok.b{border-color:var(--blk); color:var(--blk)}
+  .tok.u{border-color:var(--blue); color:var(--blue)}
+  .tok.small{width:20mm; height:20mm; border-width:.7mm}
+  .tok.small .g{font-size:14pt}
+
+  @media print{
+    body{background:#fff}
+    .toolbar{display:none}
+    .page{margin:0; box-shadow:none; width:auto; min-height:0; padding:0; page-break-after:always}
+    .page:last-child{page-break-after:auto}
+    @page{ size:A4; margin:8mm }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <strong>兵符 · 可打印原型 v0.5</strong>
+  <button onclick="window.print()">打印 / 导出 PDF</button>
+  <span>打印设置：A4 · 缩放 100% · 勾选「打印背景图形」· 页边距「默认」</span>
+</div>
+
+<!-- ============ 1. 封面 ============ -->
+<section class="page">
+  <h1>兵 符</h1>
+  <div class="sub">象棋卡牌 · 可打印原型 · v0.5</div>
+
+  <div class="box" style="margin-top:8mm">
+    <h3 style="margin-top:0">怎么用这份文件</h3>
+    <ol style="margin:0; padding-left:5mm">
+      <li>直接打印全部页面（A4，缩放 100%，务必勾选「打印背景图形」）。</li>
+      <li>棋盘页可单独多印一份备用；卡牌页沿边框裁切，建议用 250g 纸或加卡套。</li>
+      <li>第一次玩，请直接照 <strong>§ 试玩版</strong>（本文件最后一页）开一局，不要上全部规则。</li>
+      <li>完整规则见 <code>象棋卡牌-规则书-v0.5.md</code>。</li>
+    </ol>
+  </div>
+
+  <h2 style="margin-top:8mm">组件清单</h2>
+  <table>
+    <tr><th style="width:38mm">组件</th><th style="width:22mm">数量</th><th>说明</th></tr>
+    <tr><td>棋盘</td><td>1</td><td>标准象棋 9×10 交叉点，加印三条桥（列 3 / 5 / 7）。本文件含 2 人盘、标注教学盘、3 人「中原要塞」盘</td></tr>
+    <tr><td>主将棋子</td><td>2</td><td>帅 / 将。不属于牌库，开局即在场，永不入手（本文件附可剪指示物）</td></tr>
+    <tr><td>共享牌库</td><td>60</td><td>兵种牌 24（小兵 21 / 象 3）+ 装备牌 18 + 锦囊牌 18。双方共用一副。<strong>士不在牌库里</strong>——它和主将一样是开局自带的固定棋子</td></tr>
+    <tr><td>弃牌堆</td><td>1</td><td>双方共用。被吃的单位、用掉的锦囊都进这里</td></tr>
+    <tr><td>行动点标记</td><td>各 2</td><td>每回合 AP = 2（本文件附 1/2 数字标记）</td></tr>
+    <tr><td>回合标记</td><td>1</td><td>标示当前轮到谁</td></tr>
+  </table>
+
+  <h2 style="margin-top:7mm">开局 30 秒设置</h2>
+  <ol style="margin:0; padding-left:5mm">
+    <li>主将放在九宫中心：红帅 <code>(5,2)</code>，黑将 <code>(5,9)</code>。</li>
+    <li>牌库 60 张洗匀。先手摸 4 张，后手摸 5 张。</li>
+    <li><strong>秘密布阵</strong>：双方各拿 3 张小兵，扣着放在己方半场（红行 1–5 / 黑行 6–10）任意空点，然后同时翻开。</li>
+    <li>先手开始。每回合：免费摸 1 张 → 花 2 点 AP 做事 → <strong>回合结束必须把手牌弃到 5 张</strong>（超额时强制，弃完才能把回合交给对手）。</li>
+    <li><strong>吃掉对方主将即获胜。</strong></li>
+  </ol>
+
+  <h2 style="margin-top:7mm">人口上限（默认 8）</h2>
+  <table>
+    <tr><th style="width:52mm">单位</th><th style="width:22mm">人口</th><th>说明</th></tr>
+    <tr><td>主将（帅 / 将）</td><td><strong>0</strong></td><td>不是卡牌，开局即在场</td></tr>
+    <tr><td>士</td><td><strong>0</strong></td><td>不是卡牌，<strong>开局每方自带 2 个</strong>，摆在九宫底角；被吃永久损失、无法补充</td></tr>
+    <tr><td>小兵（光兵）</td><td><strong>1</strong></td><td>开局布阵的 3 个小兵 = 3 人口</td></tr>
+    <tr><td>象 / 骑兵 / 战车 / 炮兵</td><td><strong>2</strong></td><td>装备牌本身占 1 人口，所以装备会让小兵 1 → 2 人口</td></tr>
+  </table>
+  <p class="note" style="margin-top:2mm">
+    一句话记法：<strong>主将和士不占人口；小兵 1；其余都是 2。</strong>
+    任何让己方人口超过上限的部署或装备都<strong>不能执行</strong>；被吃掉的单位立即释放人口。
+    8 人口可以是 <strong>8 个小兵</strong>，也可以是 <strong>4 台战车</strong>——这就是本作最核心的取舍。<br>
+    <strong>另外：象每方场上最多 2 个</strong>（与象棋编制一致；只算场上，不算手牌；被吃或解散立刻释放名额）。士不需要上限——它们固定 2 个、无法补充。<br>
+    <strong>解散</strong>（1 AP）：把自己一个单位连同装备送进弃牌堆，换回它占的人口。若满编 8 个小兵，就永远无法装备（装备后变 9 人口），必须靠解散腾位才能升级。主将与士不能被解散。
+  </p>
+
+  <p class="note" style="margin-top:8mm">
+    本原型为纯印刷件，不含任何外部资源，可离线使用。<br>
+    卡牌采用中性配色 —— 因为双方共用一副牌，摸到谁的回合打出，就属于谁。
+  </p>
+</section>
+
+<!-- ============ 2. 标准棋盘（2 人） ============ -->
+<section class="page">
+  <h2>标准棋盘 · 2 人局</h2>
+  <div class="board-wrap">
+    <svg class="board" viewBox="0 0 436 482" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="1" width="434" height="480" rx="6" fill="#f6ecd8" stroke="#8a6a3a" stroke-width="2"/>
+      <rect x="34" y="34" width="368" height="414" fill="none" stroke="#3a2a18" stroke-width="2.4"/>
+
+      <!-- 横线 10 条 -->
+      <g stroke="#3a2a18" stroke-width="1.1">
+        <line x1="34" y1="34"  x2="402" y2="34"/>
+        <line x1="34" y1="80"  x2="402" y2="80"/>
+        <line x1="34" y1="126" x2="402" y2="126"/>
+        <line x1="34" y1="172" x2="402" y2="172"/>
+        <line x1="34" y1="218" x2="402" y2="218"/>
+        <line x1="34" y1="264" x2="402" y2="264"/>
+        <line x1="34" y1="310" x2="402" y2="310"/>
+        <line x1="34" y1="356" x2="402" y2="356"/>
+        <line x1="34" y1="402" x2="402" y2="402"/>
+        <line x1="34" y1="448" x2="402" y2="448"/>
+      </g>
+      <!-- 竖线：1 与 9 列贯通，2–8 列在河界断开 -->
+      <g stroke="#3a2a18" stroke-width="1.1">
+        <line x1="34"  y1="34" x2="34"  y2="448"/>
+        <line x1="402" y1="34" x2="402" y2="448"/>
+        <line x1="80"  y1="34" x2="80"  y2="218"/><line x1="80"  y1="264" x2="80"  y2="448"/>
+        <line x1="126" y1="34" x2="126" y2="218"/><line x1="126" y1="264" x2="126" y2="448"/>
+        <line x1="172" y1="34" x2="172" y2="218"/><line x1="172" y1="264" x2="172" y2="448"/>
+        <line x1="218" y1="34" x2="218" y2="218"/><line x1="218" y1="264" x2="218" y2="448"/>
+        <line x1="264" y1="34" x2="264" y2="218"/><line x1="264" y1="264" x2="264" y2="448"/>
+        <line x1="310" y1="34" x2="310" y2="218"/><line x1="310" y1="264" x2="310" y2="448"/>
+        <line x1="356" y1="34" x2="356" y2="218"/><line x1="356" y1="264" x2="356" y2="448"/>
+      </g>
+
+      <!-- 九宫 -->
+      <g stroke="#3a2a18" stroke-width="1.1">
+        <line x1="172" y1="448" x2="264" y2="356"/><line x1="264" y1="448" x2="172" y2="356"/>
+        <line x1="172" y1="34"  x2="264" y2="126"/><line x1="264" y1="34"  x2="172" y2="126"/>
+      </g>
+
+      <!-- 楚河汉界 -->
+      <text x="172" y="241" font-size="21" fill="#8a6a3a" text-anchor="middle" font-family="serif" letter-spacing="4">楚河</text>
+      <text x="264" y="241" font-size="21" fill="#8a6a3a" text-anchor="middle" font-family="serif" letter-spacing="4">汉界</text>
+
+      <!-- 三条桥 -->
+      <g stroke="#b8860b" stroke-width="5" stroke-linecap="round">
+        <line x1="126" y1="218" x2="126" y2="264"/>
+        <line x1="218" y1="218" x2="218" y2="264"/>
+        <line x1="310" y1="218" x2="310" y2="264"/>
+      </g>
+      <g stroke="#8a6a3a" stroke-width="1.6">
+        <line x1="118" y1="218" x2="134" y2="218"/><line x1="118" y1="264" x2="134" y2="264"/>
+        <line x1="210" y1="218" x2="226" y2="218"/><line x1="210" y1="264" x2="226" y2="264"/>
+        <line x1="302" y1="218" x2="318" y2="218"/><line x1="302" y1="264" x2="318" y2="264"/>
+      </g>
+
+      <!-- 起始主将 -->
+      <circle cx="218" cy="402" r="15" fill="#fff" stroke="#b4262c" stroke-width="2"/>
+      <text x="218" y="402" font-size="19" fill="#b4262c" text-anchor="middle" dominant-baseline="central">帅</text>
+      <circle cx="218" cy="80" r="15" fill="#fff" stroke="#1d1d1d" stroke-width="2"/>
+      <text x="218" y="80" font-size="19" fill="#1d1d1d" text-anchor="middle" dominant-baseline="central">将</text>
+
+      <!-- 列号 -->
+      <g font-size="12" fill="#8a6a3a" font-family="system-ui,sans-serif" text-anchor="middle">
+        <text x="34"  y="26">1</text><text x="80" y="26">2</text><text x="126" y="26">3</text>
+        <text x="172" y="26">4</text><text x="218" y="26">5</text><text x="264" y="26">6</text>
+        <text x="310" y="26">7</text><text x="356" y="26">8</text><text x="402" y="26">9</text>
+      </g>
+      <g font-size="12" fill="#8a6a3a" font-family="system-ui,sans-serif" text-anchor="middle">
+        <text x="34"  y="466">1</text><text x="80" y="466">2</text><text x="126" y="466">3</text>
+        <text x="172" y="466">4</text><text x="218" y="466">5</text><text x="264" y="466">6</text>
+        <text x="310" y="466">7</text><text x="356" y="466">8</text><text x="402" y="466">9</text>
+      </g>
+    </svg>
+  </div>
+  <p class="cap">
+    行 1–5 = 红方半场（红帅起始 <code>(5,2)</code>）｜行 6–10 = 黑方半场（黑将起始 <code>(5,9)</code>）<br>
+    金色粗线 = 三条桥（列 3 / 5 / 7）｜小兵、战车、炮兵只能在这三列跨过河界；骑兵可任意跃河
+  </p>
+  <p class="note" style="text-align:center; margin-top:3mm">
+    此盘同时用于 <strong>2 人局</strong> 与 <strong>4 人 2v2</strong>（见第 4 页）。列号标在盘外，方便报点。
+  </p>
+</section>
+
+<!-- ============ 3. 标注教学盘 ============ -->
+<section class="page">
+  <h2>标注教学盘 · 九宫 · 桥 · 部署区</h2>
+  <div class="board-wrap">
+    <svg class="board" viewBox="0 0 436 482" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="1" width="434" height="480" rx="6" fill="#f6ecd8" stroke="#8a6a3a" stroke-width="2"/>
+      <rect x="34" y="34" width="368" height="414" fill="none" stroke="#3a2a18" stroke-width="2.4"/>
+
+      <!-- 部署区（红帅 (5,2) 曼哈顿距离 ≤2） -->
+      <g fill="#b4262c" opacity="0.13">
+        <circle cx="126" cy="402" r="15"/><circle cx="172" cy="402" r="15"/><circle cx="218" cy="402" r="15"/>
+        <circle cx="264" cy="402" r="15"/><circle cx="310" cy="402" r="15"/>
+        <circle cx="172" cy="448" r="15"/><circle cx="218" cy="448" r="15"/><circle cx="264" cy="448" r="15"/>
+        <circle cx="172" cy="356" r="15"/><circle cx="218" cy="356" r="15"/><circle cx="264" cy="356" r="15"/>
+        <circle cx="218" cy="310" r="15"/>
+      </g>
+      <!-- 部署区（黑将 (5,9) 曼哈顿距离 ≤2） -->
+      <g fill="#1d1d1d" opacity="0.13">
+        <circle cx="126" cy="80" r="15"/><circle cx="172" cy="80" r="15"/><circle cx="218" cy="80" r="15"/>
+        <circle cx="264" cy="80" r="15"/><circle cx="310" cy="80" r="15"/>
+        <circle cx="172" cy="34" r="15"/><circle cx="218" cy="34" r="15"/><circle cx="264" cy="34" r="15"/>
+        <circle cx="172" cy="126" r="15"/><circle cx="218" cy="126" r="15"/><circle cx="264" cy="126" r="15"/>
+        <circle cx="218" cy="172" r="15"/>
+      </g>
+
+      <!-- 九宫底色 -->
+      <rect x="149" y="333" width="138" height="138" fill="#b4262c" opacity="0.07" stroke="#b4262c" stroke-width="1" stroke-dasharray="4 3"/>
+      <rect x="149" y="11"  width="138" height="138" fill="#1d1d1d" opacity="0.07" stroke="#1d1d1d" stroke-width="1" stroke-dasharray="4 3"/>
+
+      <!-- 横线 -->
+      <g stroke="#3a2a18" stroke-width="1.1">
+        <line x1="34" y1="34"  x2="402" y2="34"/><line x1="34" y1="80"  x2="402" y2="80"/>
+        <line x1="34" y1="126" x2="402" y2="126"/><line x1="34" y1="172" x2="402" y2="172"/>
+        <line x1="34" y1="218" x2="402" y2="218"/><line x1="34" y1="264" x2="402" y2="264"/>
+        <line x1="34" y1="310" x2="402" y2="310"/><line x1="34" y1="356" x2="402" y2="356"/>
+        <line x1="34" y1="402" x2="402" y2="402"/><line x1="34" y1="448" x2="402" y2="448"/>
+      </g>
+      <!-- 竖线 -->
+      <g stroke="#3a2a18" stroke-width="1.1">
+        <line x1="34"  y1="34" x2="34"  y2="448"/>
+        <line x1="402" y1="34" x2="402" y2="448"/>
+        <line x1="80"  y1="34" x2="80"  y2="218"/><line x1="80"  y1="264" x2="80"  y2="448"/>
+        <line x1="126" y1="34" x2="126" y2="218"/><line x1="126" y1="264" x2="126" y2="448"/>
+        <line x1="172" y1="34" x2="172" y2="218"/><line x1="172" y1="264" x2="172" y2="448"/>
+        <line x1="218" y1="34" x2="218" y2="218"/><line x1="218" y1="264" x2="218" y2="448"/>
+        <line x1="264" y1="34" x2="264" y2="218"/><line x1="264" y1="264" x2="264" y2="448"/>
+        <line x1="310" y1="34" x2="310" y2="218"/><line x1="310" y1="264" x2="310" y2="448"/>
+        <line x1="356" y1="34" x2="356" y2="218"/><line x1="356" y1="264" x2="356" y2="448"/>
+      </g>
+      <!-- 九宫对角线 -->
+      <g stroke="#3a2a18" stroke-width="1.1">
+        <line x1="172" y1="448" x2="264" y2="356"/><line x1="264" y1="448" x2="172" y2="356"/>
+        <line x1="172" y1="34"  x2="264" y2="126"/><line x1="264" y1="34"  x2="172" y2="126"/>
+      </g>
+
+      <text x="172" y="241" font-size="19" fill="#8a6a3a" text-anchor="middle" font-family="serif" letter-spacing="3">楚河</text>
+      <text x="264" y="241" font-size="19" fill="#8a6a3a" text-anchor="middle" font-family="serif" letter-spacing="3">汉界</text>
+
+      <!-- 桥 -->
+      <g stroke="#b8860b" stroke-width="5" stroke-linecap="round">
+        <line x1="126" y1="218" x2="126" y2="264"/>
+        <line x1="218" y1="218" x2="218" y2="264"/>
+        <line x1="310" y1="218" x2="310" y2="264"/>
+      </g>
+
+      <!-- 主将 + 部署区轮廓 -->
+      <circle cx="218" cy="402" r="15" fill="#fff" stroke="#b4262c" stroke-width="2"/>
+      <text x="218" y="402" font-size="19" fill="#b4262c" text-anchor="middle" dominant-baseline="central">帅</text>
+      <circle cx="218" cy="80" r="15" fill="#fff" stroke="#1d1d1d" stroke-width="2"/>
+      <text x="218" y="80" font-size="19" fill="#1d1d1d" text-anchor="middle" dominant-baseline="central">将</text>
+
+      <!-- 标注引线 -->
+      <g font-family="system-ui,sans-serif" font-size="11">
+        <text x="330" y="248" fill="#8a6a3a">← 桥（列 3/5/7）</text>
+        <text x="20" y="470" fill="#b4262c">▲ 红方九宫 + 部署区（淡红圈）</text>
+        <text x="20" y="16" fill="#1d1d1d">▼ 黑方九宫 + 部署区（淡灰圈）</text>
+      </g>
+    </svg>
+  </div>
+  <div class="row" style="margin-top:3mm">
+    <div class="col box">
+      <strong>部署区怎么算</strong>
+      <p style="margin:1mm 0 0">己方主将周围<strong>曼哈顿距离 ≤ 2</strong> 的空点，且不得越过河界。红帅在起始位置时，范围内共 <strong>12</strong> 个点，实际可用 <strong>11</strong> 个（图中淡红圈）。<strong>主将移动，部署区跟着移动。</strong></p>
+    </div>
+    <div class="col box">
+      <strong>九宫</strong>
+      <p style="margin:1mm 0 0">红方 列 4–6 × 行 1–3；黑方 列 4–6 × 行 8–10。主将只能在其中走一步直线，<strong>不能过河</strong>，起始在中心。<strong>「士」也只能部署在九宫内的空点</strong>，并且终生不出九宫。</p>
+    </div>
+  </div>
+  <p class="cap">最容易判错的一条：车沿非桥的列（如列 4、列 6）<strong>不能</strong>直接冲过河界，必须先绕到列 3 / 5 / 7 的桥头。</p>
+</section>
+
+<!-- ============ 4. 3 人 · 中原要塞 ============ -->
+<section class="page">
+  <h2>3 人局 · 中原要塞盘</h2>
+  <div class="board-wrap">
+    <svg class="board" viewBox="0 0 436 482" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="1" width="434" height="480" rx="6" fill="#f6ecd8" stroke="#8a6a3a" stroke-width="2"/>
+      <rect x="34" y="34" width="368" height="414" fill="none" stroke="#3a2a18" stroke-width="2.4"/>
+
+      <!-- 蓝方本阵：列 4–6 × 行 5–7 -->
+      <rect x="149" y="149" width="138" height="138" fill="#1f5fa8" opacity="0.13" stroke="#1f5fa8" stroke-width="1.6" stroke-dasharray="6 4"/>
+      <!-- 红黑九宫 -->
+      <rect x="149" y="333" width="138" height="138" fill="#b4262c" opacity="0.08" stroke="#b4262c" stroke-width="1" stroke-dasharray="4 3"/>
+      <rect x="149" y="11"  width="138" height="138" fill="#1d1d1d" opacity="0.08" stroke="#1d1d1d" stroke-width="1" stroke-dasharray="4 3"/>
+
+      <g stroke="#3a2a18" stroke-width="1.1">
+        <line x1="34" y1="34"  x2="402" y2="34"/><line x1="34" y1="80"  x2="402" y2="80"/>
+        <line x1="34" y1="126" x2="402" y2="126"/><line x1="34" y1="172" x2="402" y2="172"/>
+        <line x1="34" y1="218" x2="402" y2="218"/><line x1="34" y1="264" x2="402" y2="264"/>
+        <line x1="34" y1="310" x2="402" y2="310"/><line x1="34" y1="356" x2="402" y2="356"/>
+        <line x1="34" y1="402" x2="402" y2="402"/><line x1="34" y1="448" x2="402" y2="448"/>
+      </g>
+      <g stroke="#3a2a18" stroke-width="1.1">
+        <line x1="34"  y1="34" x2="34"  y2="448"/>
+        <line x1="402" y1="34" x2="402" y2="448"/>
+        <line x1="80"  y1="34" x2="80"  y2="218"/><line x1="80"  y1="264" x2="80"  y2="448"/>
+        <line x1="126" y1="34" x2="126" y2="218"/><line x1="126" y1="264" x2="126" y2="448"/>
+        <line x1="172" y1="34" x2="172" y2="218"/><line x1="172" y1="264" x2="172" y2="448"/>
+        <line x1="218" y1="34" x2="218" y2="218"/><line x1="218" y1="264" x2="218" y2="448"/>
+        <line x1="264" y1="34" x2="264" y2="218"/><line x1="264" y1="264" x2="264" y2="448"/>
+        <line x1="310" y1="34" x2="310" y2="218"/><line x1="310" y1="264" x2="310" y2="448"/>
+        <line x1="356" y1="34" x2="356" y2="218"/><line x1="356" y1="264" x2="356" y2="448"/>
+      </g>
+      <g stroke="#3a2a18" stroke-width="1.1">
+        <line x1="172" y1="448" x2="264" y2="356"/><line x1="264" y1="448" x2="172" y2="356"/>
+        <line x1="172" y1="34"  x2="264" y2="126"/><line x1="264" y1="34"  x2="172" y2="126"/>
+      </g>
+
+      <text x="172" y="241" font-size="17" fill="#8a6a3a" text-anchor="middle" font-family="serif" letter-spacing="3">楚河</text>
+      <text x="264" y="241" font-size="17" fill="#8a6a3a" text-anchor="middle" font-family="serif" letter-spacing="3">汉界</text>
+
+      <!-- 桥：中桥被蓝方本阵占据 -->
+      <line x1="126" y1="218" x2="126" y2="264" stroke="#b8860b" stroke-width="5" stroke-linecap="round"/>
+      <line x1="218" y1="218" x2="218" y2="264" stroke="#1f5fa8" stroke-width="5" stroke-linecap="round"/>
+      <line x1="310" y1="218" x2="310" y2="264" stroke="#b8860b" stroke-width="5" stroke-linecap="round"/>
+
+      <!-- 主将 -->
+      <circle cx="218" cy="402" r="15" fill="#fff" stroke="#b4262c" stroke-width="2"/>
+      <text x="218" y="402" font-size="19" fill="#b4262c" text-anchor="middle" dominant-baseline="central">帅</text>
+      <circle cx="218" cy="80" r="15" fill="#fff" stroke="#1d1d1d" stroke-width="2"/>
+      <text x="218" y="80" font-size="19" fill="#1d1d1d" text-anchor="middle" dominant-baseline="central">将</text>
+      <circle cx="218" cy="218" r="16" fill="#fff" stroke="#1f5fa8" stroke-width="2.4"/>
+      <text x="218" y="218" font-size="19" fill="#1f5fa8" text-anchor="middle" dominant-baseline="central">王</text>
+
+      <g font-family="system-ui,sans-serif" font-size="11">
+        <text x="293" y="158" fill="#1f5fa8">蓝方本阵</text>
+        <text x="293" y="172" fill="#1f5fa8">（列 4–6 × 行 5–7）</text>
+        <text x="330" y="248" fill="#b8860b">← 侧桥</text>
+      </g>
+    </svg>
+  </div>
+  <div class="row" style="margin-top:3mm">
+    <div class="col box">
+      <strong>蓝方的特权</strong>
+      <p style="margin:1mm 0 0">本阵<strong>横跨楚河汉界</strong>，部署区被河界切成南北两块，蓝方每次部署可任选一块 —— 等于自带渡口。</p>
+    </div>
+    <div class="col box">
+      <strong>蓝方的代价</strong>
+      <p style="margin:1mm 0 0"><strong>两面受敌</strong>；且中央桥（列 5）正好从蓝方主将脚下穿过 —— 红黑想走中桥，就得先面对蓝方主将。<strong>开局布阵只有 2 个单位</strong>（红黑各 3 个）。</p>
+    </div>
+  </div>
+  <p class="cap">回合顺序：红 → 黑 → 蓝。主将起始：红 <code>(5,2)</code>｜黑 <code>(5,9)</code>｜蓝 <code>(5,6)</code>。牌库 90 张（60 张 + 30 张按比例补齐）。</p>
+</section>
+
+<!-- ============ 5. 4 人 2v2 ============ -->
+<section class="page">
+  <h2>4 人局 · 2v2 组队（复用标准盘）</h2>
+  <div class="board-wrap">
+    <svg class="board" viewBox="0 0 436 482" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1" y="1" width="434" height="480" rx="6" fill="#f6ecd8" stroke="#8a6a3a" stroke-width="2"/>
+      <!-- 阵地分色 -->
+      <rect x="34" y="264" width="368" height="184" fill="#b4262c" opacity="0.07"/>
+      <rect x="34" y="34"  width="368" height="184" fill="#1d1d1d" opacity="0.07"/>
+      <rect x="34" y="34" width="368" height="414" fill="none" stroke="#3a2a18" stroke-width="2.4"/>
+
+      <g stroke="#3a2a18" stroke-width="1.1">
+        <line x1="34" y1="34"  x2="402" y2="34"/><line x1="34" y1="80"  x2="402" y2="80"/>
+        <line x1="34" y1="126" x2="402" y2="126"/><line x1="34" y1="172" x2="402" y2="172"/>
+        <line x1="34" y1="218" x2="402" y2="218"/><line x1="34" y1="264" x2="402" y2="264"/>
+        <line x1="34" y1="310" x2="402" y2="310"/><line x1="34" y1="356" x2="402" y2="356"/>
+        <line x1="34" y1="402" x2="402" y2="402"/><line x1="34" y1="448" x2="402" y2="448"/>
+      </g>
+      <g stroke="#3a2a18" stroke-width="1.1">
+        <line x1="34"  y1="34" x2="34"  y2="448"/>
+        <line x1="402" y1="34" x2="402" y2="448"/>
+        <line x1="80"  y1="34" x2="80"  y2="218"/><line x1="80"  y1="264" x2="80"  y2="448"/>
+        <line x1="126" y1="34" x2="126" y2="218"/><line x1="126" y1="264" x2="126" y2="448"/>
+        <line x1="172" y1="34" x2="172" y2="218"/><line x1="172" y1="264" x2="172" y2="448"/>
+        <line x1="218" y1="34" x2="218" y2="218"/><line x1="218" y1="264" x2="218" y2="448"/>
+        <line x1="264" y1="34" x2="264" y2="218"/><line x1="264" y1="264" x2="264" y2="448"/>
+        <line x1="310" y1="34" x2="310" y2="218"/><line x1="310" y1="264" x2="310" y2="448"/>
+        <line x1="356" y1="34" x2="356" y2="218"/><line x1="356" y1="264" x2="356" y2="448"/>
+      </g>
+      <g stroke="#3a2a18" stroke-width="1.1">
+        <line x1="172" y1="448" x2="264" y2="356"/><line x1="264" y1="448" x2="172" y2="356"/>
+        <line x1="172" y1="34"  x2="264" y2="126"/><line x1="264" y1="34"  x2="172" y2="126"/>
+      </g>
+      <text x="172" y="241" font-size="19" fill="#8a6a3a" text-anchor="middle" font-family="serif" letter-spacing="3">楚河</text>
+      <text x="264" y="241" font-size="19" fill="#8a6a3a" text-anchor="middle" font-family="serif" letter-spacing="3">汉界</text>
+      <g stroke="#b8860b" stroke-width="5" stroke-linecap="round">
+        <line x1="126" y1="218" x2="126" y2="264"/>
+        <line x1="218" y1="218" x2="218" y2="264"/>
+        <line x1="310" y1="218" x2="310" y2="264"/>
+      </g>
+
+      <!-- 两队主将（每队仅一枚在场上） -->
+      <circle cx="218" cy="402" r="16" fill="#fff" stroke="#b4262c" stroke-width="2.6"/>
+      <text x="218" y="402" font-size="19" fill="#b4262c" text-anchor="middle" dominant-baseline="central">帅</text>
+      <circle cx="218" cy="80" r="16" fill="#fff" stroke="#1d1d1d" stroke-width="2.6"/>
+      <text x="218" y="80" font-size="19" fill="#1d1d1d" text-anchor="middle" dominant-baseline="central">将</text>
+
+      <g font-family="system-ui,sans-serif" font-size="12" font-weight="600">
+        <text x="14" y="472" fill="#b4262c">红队阵地（红A + 红B 共用）</text>
+        <text x="14" y="26"  fill="#1d1d1d">黑队阵地（黑A + 黑B 共用）</text>
+      </g>
+    </svg>
+  </div>
+  <div class="row" style="margin-top:3mm">
+    <div class="col box">
+      <strong>规则要点</strong>
+      <ul style="margin:1mm 0 0; padding-left:5mm">
+        <li><strong>棋盘完全不变</strong>，不需要任何新地形。</li>
+        <li>每队 = 一个势力：<strong>全队共用 1 个主将、1 个部署区、一片阵地</strong>。主将被吃，全队失败。</li>
+        <li>每人有自己的手牌、自己的回合。队友可以互相看牌、自由商量。</li>
+        <li><strong>牌库 120 张</strong>（两份），每人手牌上限降为 <strong>4</strong>。</li>
+        <li>布阵：每队 3 个单位（两人一起决定）。</li>
+      </ul>
+    </div>
+    <div class="col box">
+      <strong>回合顺序</strong>
+      <p style="margin:1mm 0 0">
+        <strong>红A → 黑A → 红B → 黑B → 红A → …</strong><br>
+        同队两人永远不连续行动，中间一定隔着对手，避免"两人连手打死一个单位"的连锁。
+      </p>
+      <p class="note" style="margin-top:2mm">这也是最省事的 4 人方案：不用改棋盘、不用改走法，直接开。</p>
+    </div>
+  </div>
+  <p class="cap">4 人混战（各自为战）需要 15×15「四门盘」，列在《设计笔记》的路线图里。</p>
+</section>
+
+<!-- ============ 6. 兵牌 ×16 ============ -->
+<section class="page">
+  <h2>兵种牌 · 小兵 16 张（第 1 / 2 页）</h2>
+  <div class="sheet">
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">未过河：向前 1 格<br>开局在底线两行内：可走 1 或 2 格</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">未过河：向前 1 格<br>开局在底线两行内：可走 1 或 2 格</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">未过河：向前 1 格<br>开局在底线两行内：可走 1 或 2 格</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">未过河：向前 1 格<br>开局在底线两行内：可走 1 或 2 格</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">过河后：前 / 左 / 右 1 格<br>永不后退</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">过河后：前 / 左 / 右 1 格<br>永不后退</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">过河后：前 / 左 / 右 1 格<br>永不后退</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">过河后：前 / 左 / 右 1 格<br>永不后退</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">过河只能走桥（列 3 / 5 / 7）<br>吃子方式同走法</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">过河只能走桥（列 3 / 5 / 7）<br>吃子方式同走法</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">过河只能走桥（列 3 / 5 / 7）<br>吃子方式同走法</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">过河只能走桥（列 3 / 5 / 7）<br>吃子方式同走法</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">可装备 1 张装备牌<br>（马 / 车 / 炮）</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">可装备 1 张装备牌<br>（马 / 车 / 炮）</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">可装备 1 张装备牌<br>（马 / 车 / 炮）</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">可装备 1 张装备牌<br>（马 / 车 / 炮）</div></div>
+  </div>
+</section>
+
+<!-- ============ 7. 兵种牌 ×8 ============ -->
+<section class="page">
+  <h2>兵种牌 · 小兵 5 + 象 3（第 2 / 2 页）</h2>
+  <div class="sheet">
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵种牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">部署：1 AP，放在部署区空点<br>（主将周围曼哈顿距离 ≤ 2）</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵种牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">部署：1 AP，放在部署区空点<br>（主将周围曼哈顿距离 ≤ 2）</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵种牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">部署：1 AP，放在部署区空点<br>（主将周围曼哈顿距离 ≤ 2）</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵种牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">部署：1 AP，放在部署区空点<br>（主将周围曼哈顿距离 ≤ 2）</div></div>
+    <div class="card pawn"><div class="hd"><span class="nm">兵 · 步卒</span></div><div class="tag">兵种牌 · 占 1 人口</div><div class="big">兵</div><div class="ft">部署：1 AP，放在部署区空点<br>（主将周围曼哈顿距离 ≤ 2）</div></div>
+
+    <div class="card unit"><div class="hd"><span class="nm">象 · 战象</span></div><div class="tag">兵种牌 · 占 2 人口</div><div class="big">象</div><div class="fx">斜走 2 格（田字），<strong>塞象眼</strong>，永不过河。</div><div class="ft"><strong>堵桥</strong>：站在己方桥头（列 3/5/7 的己方河岸）时堵住这座桥 —— <strong>河对岸的敌子既不能过桥，也不能吃掉它</strong>；已经过河的敌子、以及<strong>马</strong>，都能正常吃掉它。<strong>每方场上最多 2 个象。</strong>红方作「相」。</div></div>
+    <div class="card unit"><div class="hd"><span class="nm">象 · 战象</span></div><div class="tag">兵种牌 · 占 2 人口</div><div class="big">象</div><div class="fx">斜走 2 格（田字），<strong>塞象眼</strong>，永不过河。</div><div class="ft"><strong>堵桥</strong>：站在己方桥头（列 3/5/7 的己方河岸）时堵住这座桥 —— <strong>河对岸的敌子既不能过桥，也不能吃掉它</strong>；已经过河的敌子、以及<strong>马</strong>，都能正常吃掉它。<strong>每方场上最多 2 个象。</strong>红方作「相」。</div></div>
+    <div class="card unit"><div class="hd"><span class="nm">象 · 战象</span></div><div class="tag">兵种牌 · 占 2 人口</div><div class="big">象</div><div class="fx">斜走 2 格（田字），<strong>塞象眼</strong>，永不过河。</div><div class="ft"><strong>堵桥</strong>：站在己方桥头（列 3/5/7 的己方河岸）时堵住这座桥 —— <strong>河对岸的敌子既不能过桥，也不能吃掉它</strong>；已经过河的敌子、以及<strong>马</strong>，都能正常吃掉它。<strong>每方场上最多 2 个象。</strong>红方作「相」。</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+  </div>
+  <p class="note" style="text-align:center; margin-top:4mm">
+    兵种牌合计 24 张（<strong>小兵 21 + 象 3</strong>）。<strong>象不依附小兵</strong>，直接部署即可——它不是装备牌。<br>
+    <strong>士不在牌库里</strong>：它和主将一样是开局自带的固定棋子，每方 2 个，摆在九宫底角，不占人口、被吃无法补充。<br>
+    试玩版 30 张只需：小兵 14 / 象 1 / 马 4 / 车 4 / 炮 4 / 锦囊 3。
+  </p>
+</section>
+
+<!-- ============ 8. 装备牌 ×16 ============ -->
+<section class="page">
+  <h2>装备牌 · 18 张（马 6 / 车 6 / 炮 6）— 第 1 / 2 页</h2>
+  <div class="sheet">
+    <div class="card gear"><div class="hd"><span class="nm">马 · 骑兵</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">馬</div><div class="fx">走日字，蹩马腿照旧。</div><div class="ft"><strong>不受河界限制，可任意跃河。</strong>唯一不依赖桥的兵种。</div></div>
+    <div class="card gear"><div class="hd"><span class="nm">马 · 骑兵</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">馬</div><div class="fx">走日字，蹩马腿照旧。</div><div class="ft"><strong>不受河界限制，可任意跃河。</strong>唯一不依赖桥的兵种。</div></div>
+    <div class="card gear"><div class="hd"><span class="nm">马 · 骑兵</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">馬</div><div class="fx">走日字，蹩马腿照旧。</div><div class="ft"><strong>不受河界限制，可任意跃河。</strong>唯一不依赖桥的兵种。</div></div>
+    <div class="card gear"><div class="hd"><span class="nm">马 · 骑兵</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">馬</div><div class="fx">走日字，蹩马腿照旧。</div><div class="ft"><strong>不受河界限制，可任意跃河。</strong>唯一不依赖桥的兵种。</div></div>
+    <div class="card gear"><div class="hd"><span class="nm">马 · 骑兵</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">馬</div><div class="fx">走日字，蹩马腿照旧。</div><div class="ft"><strong>不受河界限制，可任意跃河。</strong>唯一不依赖桥的兵种。</div></div>
+    <div class="card gear"><div class="hd"><span class="nm">马 · 骑兵</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">馬</div><div class="fx">走日字，蹩马腿照旧。</div><div class="ft"><strong>不受河界限制，可任意跃河。</strong>唯一不依赖桥的兵种。</div></div>
+
+    <div class="card gear"><div class="hd"><span class="nm">车 · 战车</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">車</div><div class="fx">直线无阻挡任意距离。</div><div class="ft"><strong>过河只能走桥（列 3 / 5 / 7）。</strong>沿非桥的列不能直接冲过河界。</div></div>
+    <div class="card gear"><div class="hd"><span class="nm">车 · 战车</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">車</div><div class="fx">直线无阻挡任意距离。</div><div class="ft"><strong>过河只能走桥（列 3 / 5 / 7）。</strong>沿非桥的列不能直接冲过河界。</div></div>
+    <div class="card gear"><div class="hd"><span class="nm">车 · 战车</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">車</div><div class="fx">直线无阻挡任意距离。</div><div class="ft"><strong>过河只能走桥（列 3 / 5 / 7）。</strong>沿非桥的列不能直接冲过河界。</div></div>
+    <div class="card gear"><div class="hd"><span class="nm">车 · 战车</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">車</div><div class="fx">直线无阻挡任意距离。</div><div class="ft"><strong>过河只能走桥（列 3 / 5 / 7）。</strong>沿非桥的列不能直接冲过河界。</div></div>
+    <div class="card gear"><div class="hd"><span class="nm">车 · 战车</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">車</div><div class="fx">直线无阻挡任意距离。</div><div class="ft"><strong>过河只能走桥（列 3 / 5 / 7）。</strong>沿非桥的列不能直接冲过河界。</div></div>
+    <div class="card gear"><div class="hd"><span class="nm">车 · 战车</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">車</div><div class="fx">直线无阻挡任意距离。</div><div class="ft"><strong>过河只能走桥（列 3 / 5 / 7）。</strong>沿非桥的列不能直接冲过河界。</div></div>
+
+    <div class="card gear"><div class="hd"><span class="nm">炮 · 炮兵</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">炮</div><div class="fx">走法同车；吃子必须隔且仅隔一个炮架（敌我皆可）。</div><div class="ft"><strong>过河只能走桥（列 3 / 5 / 7）。</strong></div></div>
+    <div class="card gear"><div class="hd"><span class="nm">炮 · 炮兵</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">炮</div><div class="fx">走法同车；吃子必须隔且仅隔一个炮架（敌我皆可）。</div><div class="ft"><strong>过河只能走桥（列 3 / 5 / 7）。</strong></div></div>
+    <div class="card gear"><div class="hd"><span class="nm">炮 · 炮兵</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">炮</div><div class="fx">走法同车；吃子必须隔且仅隔一个炮架（敌我皆可）。</div><div class="ft"><strong>过河只能走桥（列 3 / 5 / 7）。</strong></div></div>
+    <div class="card gear"><div class="hd"><span class="nm">炮 · 炮兵</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">炮</div><div class="fx">走法同车；吃子必须隔且仅隔一个炮架（敌我皆可）。</div><div class="ft"><strong>过河只能走桥（列 3 / 5 / 7）。</strong></div></div>
+  </div>
+  <p class="note" style="text-align:center; margin-top:3mm">
+    装备牌只能叠放在<strong>己方场上一个未装备的小兵</strong>下，一个小兵只能装一件。<strong>主将不可装备。</strong>
+  </p>
+</section>
+
+<!-- ============ 9. 装备牌 ×2 ============ -->
+<section class="page">
+  <h2>装备牌 · 第 2 / 2 页</h2>
+  <div class="sheet">
+    <div class="card gear"><div class="hd"><span class="nm">炮 · 炮兵</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">炮</div><div class="fx">走法同车；吃子必须隔且仅隔一个炮架（敌我皆可）。</div><div class="ft"><strong>过河只能走桥（列 3 / 5 / 7）。</strong></div></div>
+    <div class="card gear"><div class="hd"><span class="nm">炮 · 炮兵</span></div><div class="tag">装备牌 · 需小兵 · 占 2 人口</div><div class="big">炮</div><div class="fx">走法同车；吃子必须隔且仅隔一个炮架（敌我皆可）。</div><div class="ft"><strong>过河只能走桥（列 3 / 5 / 7）。</strong></div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+  </div>
+  <div class="box" style="margin-top:6mm">
+    <strong>装备是风险投资</strong>
+    <p style="margin:1mm 0 0">一个兵 + 一张车牌 = 一台战车。但战车被吃，<strong>两张牌一起进共用弃牌堆</strong> —— 而弃牌堆是要洗回牌库的。也就是说：<strong>今天被吃掉的战车，明天可能被对手摸到，也可能被你摸回来反杀。</strong>造大件 = 送大件。</p>
+  </div>
+</section>
+
+<!-- ============ 10. 锦囊牌 ×16 ============ -->
+<section class="page">
+  <h2>锦囊牌 · 18 张 / 14 种（第 1 / 2 页）</h2>
+  <div class="sheet">
+    <div class="card sc"><div class="hd"><span class="nm">增援</span><span class="cost">1 AP</span></div><div class="tag">即时锦囊 ×2</div><div class="fx">在己方部署区内的空点<strong>免费部署 1 个小兵</strong>（不需要兵牌）。</div><div class="ft">受部署区与河界限制，该小兵仍受桥规则约束。</div></div>
+    <div class="card sc"><div class="hd"><span class="nm">增援</span><span class="cost">1 AP</span></div><div class="tag">即时锦囊 ×2</div><div class="fx">在己方部署区内的空点<strong>免费部署 1 个小兵</strong>（不需要兵牌）。</div><div class="ft">受部署区与河界限制，该小兵仍受桥规则约束。</div></div>
+
+    <div class="card sc"><div class="hd"><span class="nm">急行军</span><span class="cost">0 AP</span></div><div class="tag">即时锦囊 ×2</div><div class="fx">本回合 <strong>+1 AP</strong>。</div><div class="ft">未用完的 AP 在回合结束时作废；可叠多张。</div></div>
+    <div class="card sc"><div class="hd"><span class="nm">急行军</span><span class="cost">0 AP</span></div><div class="tag">即时锦囊 ×2</div><div class="fx">本回合 <strong>+1 AP</strong>。</div><div class="ft">未用完的 AP 在回合结束时作废；可叠多张。</div></div>
+
+    <div class="card sc"><div class="hd"><span class="nm">断桥</span><span class="cost">1 AP</span></div><div class="tag">限时锦囊 · 3 回合 ×2</div><div class="fx">指定列 3 / 5 / 7 中的一座桥，<strong>3 个回合内不可通行</strong>。</div><div class="ft">不能指定已被断的桥；<strong>3 回合后桥自己恢复</strong>；同一列有浮桥时以浮桥为准（通行）。</div></div>
+    <div class="card sc"><div class="hd"><span class="nm">断桥</span><span class="cost">1 AP</span></div><div class="tag">限时锦囊 · 3 回合 ×2</div><div class="fx">指定列 3 / 5 / 7 中的一座桥，<strong>3 个回合内不可通行</strong>。</div><div class="ft">不能指定已被断的桥；<strong>3 回合后桥自己恢复</strong>；同一列有浮桥时以浮桥为准（通行）。</div></div>
+
+    <div class="card sc"><div class="hd"><span class="nm">浮桥</span><span class="cost">1 AP</span></div><div class="tag">限时锦囊 · 2 回合 ×2</div><div class="fx">在<strong>任意一列</strong>架设临时桥，<strong>2 个回合内</strong>可通行。</div><div class="ft">可以架在已被断的列上，<strong>覆盖断桥</strong>；2 回合后自动消失。</div></div>
+    <div class="card sc"><div class="hd"><span class="nm">浮桥</span><span class="cost">1 AP</span></div><div class="tag">限时锦囊 · 2 回合 ×2</div><div class="fx">在<strong>任意一列</strong>架设临时桥，<strong>2 个回合内</strong>可通行。</div><div class="ft">可以架在已被断的列上，<strong>覆盖断桥</strong>；2 回合后自动消失。</div></div>
+
+    <div class="card sc"><div class="hd"><span class="nm">火攻</span><span class="cost">1 AP</span></div><div class="tag">即时锦囊 ×1</div><div class="fx">消灭 1 个<strong>与己方单位相邻</strong>的敌方单位（连同其装备）。</div><div class="ft">相邻 = 八邻域（含对角）。<strong>不能以主将为目标。</strong></div></div>
+
+    <div class="card sc"><div class="hd"><span class="nm">水淹</span><span class="cost">1 AP</span></div><div class="tag">限时锦囊 · 1 回合 ×1</div><div class="fx">行 5 与行 6 上的<strong>所有</strong>单位，<strong>1 个回合内</strong>不能移动。</div><div class="ft">含己方；主将若在行 5/6 也受影响。</div></div>
+
+    <div class="card sc"><div class="hd"><span class="nm">绊马索</span><span class="cost">1 AP</span></div><div class="tag">限时锦囊 · 2 回合 ×1</div><div class="fx">目标敌方骑兵<strong>2 个回合内</strong>不能移动。</div><div class="ft">只对「兵 + 马」有效；对主将无效；目标阵亡则效果一并消失。</div></div>
+
+    <div class="card sc"><div class="hd"><span class="nm">声东击西</span><span class="cost">1 AP</span></div><div class="tag">即时锦囊 ×1</div><div class="fx">将 1 个敌方单位移动 <strong>1 格</strong>（八邻域任意方向）。</div><div class="ft">不受其走法限制；<strong>不得因此过河</strong>；不能进已有单位的格；不能以主将为目标。</div></div>
+
+    <div class="card sc"><div class="hd"><span class="nm">移形换位</span><span class="cost">1 AP</span></div><div class="tag">即时锦囊 ×1</div><div class="fx">交换己方 2 个单位的位置。</div><div class="ft"><strong>禁止用此牌把单位换过河</strong>；两者必须在河的同一侧。</div></div>
+
+    <div class="card sc"><div class="hd"><span class="nm">反间计</span><span class="cost">1 AP</span></div><div class="tag">即时锦囊 ×1</div><div class="fx">对手<strong>随机弃 1 张手牌</strong>。</div><div class="ft">对手无手牌时不能打出。</div></div>
+
+    <div class="card sc"><div class="hd"><span class="nm">草船借箭</span><span class="cost">1 AP</span></div><div class="tag">即时锦囊 ×1</div><div class="fx"><strong>随机获得对手 1 张手牌</strong>。</div><div class="ft">对手无手牌时不能打出；超出上限的部分在结束阶段照常弃掉。</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+  </div>
+</section>
+
+<!-- ============ 11. 锦囊牌 ×2 + 指示物 ============ -->
+<section class="page">
+  <h2>锦囊牌 · 第 2 / 2 页</h2>
+  <div class="sheet">
+    <div class="card sc"><div class="hd"><span class="nm">空城计</span><span class="cost">0 AP</span></div><div class="tag">限时锦囊 · 1 回合 ×1</div><div class="fx"><strong>1 个回合内</strong>，己方主将<strong>不能被任何方式吃掉</strong>。</div><div class="ft">唯一的防御牌，必须<strong>提前埋伏</strong>；此状态下对手吃主将的那次移动非法。</div></div>
+    <div class="card sc"><div class="hd"><span class="nm">兵器补给</span><span class="cost">1 AP</span></div><div class="tag">即时锦囊 ×1</div><div class="fx">从<strong>牌库或弃牌堆</strong>中检索 1 张装备牌入手，然后洗牌库。</div><div class="ft">可以从弃牌堆取 —— 即<strong>回收一件被吃掉的装备</strong>。</div></div>
+    <div class="card sc"><div class="hd"><span class="nm">探马</span><span class="cost">1 AP</span></div><div class="tag">即时锦囊 ×1</div><div class="fx">二选一：① 查看牌库顶 3 张，以任意顺序放回；② <strong>查看对手全部手牌</strong>。</div><div class="ft">查看手牌不改变手牌内容。</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+    <div class="card blank"><div class="big">预留位</div></div>
+  </div>
+
+  <h2 style="margin-top:8mm">指示物（沿圆剪下）</h2>
+  <div class="tokrow">
+    <div class="tok r"><div class="g">帅</div><div class="l">红方主将</div></div>
+    <div class="tok b"><div class="g">将</div><div class="l">黑方主将</div></div>
+    <div class="tok u"><div class="g">王</div><div class="l">蓝方主将（3 人局）</div></div>
+    <div class="tok"><div class="g">先</div><div class="l">回合标记</div></div>
+  </div>
+  <div class="tokrow">
+    <div class="tok small"><div class="g">1</div><div class="l">AP</div></div>
+    <div class="tok small"><div class="g">1</div><div class="l">AP</div></div>
+    <div class="tok small"><div class="g">2</div><div class="l">AP</div></div>
+    <div class="tok small"><div class="g">2</div><div class="l">AP</div></div>
+    <div class="tok small"><div class="g">断</div><div class="l">断桥 3 回合</div></div>
+    <div class="tok small"><div class="g">浮</div><div class="l">浮桥 2 回合</div></div>
+    <div class="tok small"><div class="g">淹</div><div class="l">水淹 1 回合</div></div>
+    <div class="tok small"><div class="g">缚</div><div class="l">绊马索 2 回合</div></div>
+    <div class="tok small"><div class="g">空</div><div class="l">空城计 1 回合</div></div>
+    <div class="tok small"><div class="g">3</div><div class="l">剩余回合</div></div>
+    <div class="tok small"><div class="g">2</div><div class="l">剩余回合</div></div>
+    <div class="tok small"><div class="g">1</div><div class="l">剩余回合</div></div>
+  </div>
+  <p class="note" style="text-align:center;margin-top:4mm">
+    <strong>限时锦囊怎么记：</strong>打出后在旁边放一个「剩余 N 回合」标记；
+    <strong>每次打出者自己的回合开始时减 1</strong>，减到 0 就把标记收掉、效果结束。
+  </p>
+</section>
+
+<!-- ============ 12. 速查 + 试玩版 ============ -->
+<section class="page">
+  <h2>回合速查</h2>
+  <table>
+    <tr><th style="width:26mm">步骤</th><th>内容</th></tr>
+    <tr><td><strong>① 整顿</strong></td><td>解除己方单位「本回合不能移动」等状态；AP 重置为 <strong>2</strong></td></tr>
+    <tr><td><strong>② 摸牌</strong></td><td>免费摸 <strong>1</strong> 张</td></tr>
+    <tr><td><strong>③ 行动</strong></td><td>花 AP，顺序任意、可重复：<br>
+      · <strong>部署</strong> 1 AP —— 打出兵牌到部署区空点（占 1 人口）<br>
+      · <strong>装备</strong> 1 AP —— 装备牌叠在己方未装备的小兵下（该单位 1 → 2 人口）<br>
+      · <strong>移动</strong> 1 AP —— 移动 1 个单位（可吃子）<strong>；每回合全盘只能移动一次</strong><br>
+      · <strong>解散</strong> 1 AP —— 送掉自己 1 个单位（连同装备），释放人口<br>
+      · <strong>出锦囊</strong> 按牌面费用（0 / 1 AP）<br>
+      · <strong>额外摸牌</strong> 1 AP —— 再摸 1 张</td></tr>
+    <tr><td><strong>④ 结束</strong></td><td><strong>手牌必须弃到 5 张</strong> —— 超额时必须弃，弃到为止，<strong>这一步不做完不能把回合交给对手</strong>；弃哪几张自己选，弃掉的牌进共用弃牌堆。<br>然后：本回合临时效果失效；交换回合标记</td></tr>
+  </table>
+
+  <h2 style="margin-top:6mm">四张必背</h2>
+  <div class="row">
+    <div class="col box"><strong>部署区</strong><p style="margin:1mm 0 0">主将周围<strong>曼哈顿距离 ≤ 2</strong> 的空点，不过河。<strong>主将走到哪，出兵口跟到哪。</strong></p></div>
+    <div class="col box"><strong>三条桥</strong><p style="margin:1mm 0 0">列 <strong>3 / 5 / 7</strong>。小兵、战车、炮兵只能在这三列过河；<strong>骑兵可任意跃河</strong>。</p></div>
+  </div>
+  <div class="row" style="margin-top:3mm">
+    <div class="col box"><strong>没有将军</strong><p style="margin:1mm 0 0">本作<strong>没有</strong>「将军 / 应将 / 将死 / 将帅照面」。谁真的把主将<strong>吃掉</strong>，谁赢。</p></div>
+    <div class="col box"><strong>共用一副牌</strong><p style="margin:1mm 0 0">被吃的单位、用掉的锦囊都进<strong>共用弃牌堆</strong>；牌库空了就洗回来。<strong>造大件 = 送大件。</strong><br>
+      <strong>手牌上限 5 张是硬的</strong>：回合结束时超额<strong>必须弃到 5 张</strong>（自己选弃哪几张），弃完才能把回合交给对手。牌库是双方共用的，囤牌等于把牌从双方的可抽范围里抽走。</p></div>
+  </div>
+  <div class="row" style="margin-top:3mm">
+    <div class="col box"><strong>人口上限 8</strong><p style="margin:1mm 0 0">主将 <strong>0</strong> ／ 士 <strong>0</strong> ／ 小兵 <strong>1</strong> ／ 象·骑兵·战车·炮兵 <strong>2</strong>。超编的部署与装备一律不能执行。8 人口 = 8 个小兵，或 4 台战车。</p></div>
+    <div class="col box"><strong>解散（1 AP）</strong><p style="margin:1mm 0 0">送掉自己 1 个单位换回人口。满编 8 个小兵时永远无法装备，必须靠解散腾位才能升级。主将与士不能被解散。</p></div>
+  </div>
+  <div class="row" style="margin-top:3mm">
+    <div class="col box"><strong>士 · 开局自带的固定棋子</strong><p style="margin:1mm 0 0">斜走 1 格、不出九宫。<strong>不是卡牌、不占人口</strong>：开局每方自带 2 个，摆在九宫底角（红 <code>(4,1)(6,1)</code> / 黑 <code>(4,10)(6,10)</code>）。<strong>被吃就永久没了</strong>，牌库里没有士牌，也无法补充。</p></div>
+    <div class="col box"><strong>象 · 堵桥</strong><p style="margin:1mm 0 0">斜走 2 格（田字）、塞象眼、永不过河。站在己方桥头时堵住这座桥：<strong>河对岸的敌子既不能过桥，也不能吃掉它</strong>；<strong>已经过河的敌子、以及马，都能正常吃掉它</strong>。</p></div>
+  </div>
+  <div class="row" style="margin-top:3mm">
+    <div class="col box"><strong>象每方上限：2 个</strong><p style="margin:1mm 0 0">与象棋编制一致（象棋每方本就是 2 象）。<strong>只算场上，不算手牌</strong>；被吃或解散立刻释放名额；4 人 2v2 时<b>每队</b>各 2（队友共享）。<br><b>为什么必须限</b>：象叠加 = 三座桥全被封死，对手只剩「马」能跃河。士不需要上限——它固定 2 个、无法补充。</p></div>
+  </div>
+  <div class="row" style="margin-top:3mm">
+    <div class="col box"><strong>一回合一步：每回合全盘只能移动一次</strong><p style="margin:1mm 0 0">
+      不管哪个棋子、也不管你有多少 AP —— 一个回合里只能移动一个棋子一次。<b>这和象棋一样：一回合一步。</b>所以 2 AP 的典型回合是「<b>1 次移动 + 1 次其他行动</b>」。<br>
+      <b>什么算「移动」</b>：只有普通的移动行动（含吃子）和主将移动算。<b>部署、装备、解散、锦囊造成的位移都不算</b> —— 所以可以「先部署 / 先装备、再移动」；新部署的棋子当回合就能走一步。<br>
+      <b>收益</b>：过河必须先花一个回合把棋子开到桥头，<b>守方永远有一整个回合可以堵桥 / 断桥 / 调兵</b>。桥因此才真正成为关口。
+    </p></div>
+  </div>
+  <div class="row" style="margin-top:3mm">
+    <div class="col box"><strong>限时锦囊的持续回合数</strong><p style="margin:1mm 0 0">
+      <strong>断桥 3 ｜ 浮桥 2 ｜ 绊马索 2 ｜ 水淹 1 ｜ 空城计 1</strong>。其余 9 种锦囊标「即时」——效果结算完就结束，不留在场上。<br>
+      <b>记法</b>：打出后在旁边放一个「剩余 N 回合」标记，<b>每次打出者自己的回合开始时减 1</b>，减到 0 就收掉标记、效果结束。<b>N = 影响对手接下来 N 个回合</b>。<br>
+      <b>例</b>：红方打出「断桥 3 回合」→ 黑方连续 3 个回合过不去，红方第 4 个回合开始时桥自己通。
+    </p></div>
+  </div>
+
+  <h2 style="margin-top:8mm">第一次玩：10 分钟试玩版</h2>
+  <div class="box">
+    <ul style="margin:0; padding-left:5mm">
+      <li><strong>2 人，AP = 2</strong></li>
+      <li><strong>牌库 30 张</strong>：兵 15 / 马 4 / 车 4 / 炮 4 / <strong>锦囊只用 3 张</strong>（增援、急行军、断桥）</li>
+      <li>初始手牌：先手 4 张，后手 5 张</li>
+      <li>开局布阵：各 3 个小兵，<strong>允许直接放在河岸（行 5 / 行 6）</strong></li>
+      <li>地形：三条桥（列 3 / 5 / 7），马可跃河，<strong>不开山脉</strong></li>
+      <li>主将：九宫限制，起始 <code>(5,2)</code> / <code>(5,9)</code>，无将军</li>
+      <li>目标：<strong>吃帅即胜</strong></li>
+    </ul>
+  </div>
+
+  <h3>跑完之后回答三个问题</h3>
+  <ol style="margin:0; padding-left:5mm">
+    <li>三条桥真的形成三个「关口」了吗？还是大家都挤中间？</li>
+    <li>小兵有用吗？（没用就把首步 2 格放大，或让部署区更大）</li>
+    <li>有没有出现「手牌打不出去、只能干看」的回合？</li>
+  </ol>
+
+  <h3>出问题时的调整旋钮</h3>
+  <table>
+    <tr><th style="width:52mm">症状</th><th>调法</th></tr>
+    <tr><td>太慢、半天打不起来</td><td>AP 改为 3</td></tr>
+    <tr><td>小兵永远走不到前线</td><td>首步 2 格放宽为「未过河全程可走 2 格」；或开局把兵直接放河岸</td></tr>
+    <tr><td>主将太脆、一炮就死</td><td>加「空城计」；或允许主将离开九宫</td></tr>
+    <tr><td>抢牌太凶、牌库光速摸空</td><td>加牌库张数；或手牌上限降到 4</td></tr>
+    <tr><td>桥太堵、谁都过不去</td><td>桥改为列 2 / 5 / 8；或多印几张「浮桥」</td></tr>
+    <tr><td>装备太亏、没人造大件</td><td>启用「缴获变体」：吃子方把装备收入手牌</td></tr>
+  </table>
+
+  <p class="note" style="margin-top:6mm">
+    兵符 · 可打印原型 v0.5 ｜ 完整规则见 <code>象棋卡牌-规则书-v0.5.md</code> ｜ 速查卡见 <code>象棋卡牌-试玩速查卡.md</code>
+  </p>
+</section>
+
+</body>
+</html>

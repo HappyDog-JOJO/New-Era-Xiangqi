@@ -1,0 +1,22 @@
+; 兵符 Bingfu — 象棋卡牌对战
+; Godot 4.7 项目文件
+
+config_version=5
+
+[application]
+
+config/name="兵符 Bingfu"
+config/description="象棋卡牌对战 · 引擎 + 可点击界面"
+config/version="0.2.0"
+run/main_scene="res://scenes/Main.tscn"
+
+[display]
+
+window/size/viewport_width=1040
+window/size/viewport_height=660
+window/stretch/mode="canvas_items"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

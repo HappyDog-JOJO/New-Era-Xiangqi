@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>兵符 · 试玩 Demo v0.2.5</title>
+<style>
+  :root{
+    --ink:#241a10; --paper:#f6ecd8; --line:#3a2a18; --gold:#b8860b;
+    --red:#b4262c; --blk:#1d1d1d; --blue:#1f5fa8; --grn:#2e7d4f;
+    --panel:#fbf6ec; --panel2:#f0e6d2;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:#3c3830; color:var(--ink);
+    font-family:"Source Han Serif SC","Noto Serif CJK SC","Songti SC","SimSun",serif;
+    font-size:14px; -webkit-font-smoothing:antialiased;
+  }
+  #app{max-width:1180px;margin:0 auto;padding:10px 14px 24px}
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;color:#f2e8d5;padding:6px 2px 12px}
+  header h1{font-size:22px;margin:0;letter-spacing:.16em}
+  header .tag{font-size:11px;opacity:.65;letter-spacing:.1em}
+  header .spacer{flex:1}
+  header select,header button{
+    font:inherit;font-size:12px;padding:5px 12px;border-radius:6px;border:1px solid #6b6152;
+    background:#4a453b;color:#f2e8d5;cursor:pointer;
+  }
+  header button:hover,header select:hover{background:#5a544a}
+  header button.primary{background:var(--red);border-color:#8d1d22;color:#fff}
+  header button.primary:hover{background:#c62d34}
+
+  .layout{display:flex;gap:16px;align-items:flex-start}
+  .boardcol{flex:0 0 auto;width:520px}
+  .side{flex:1;min-width:280px;display:flex;flex-direction:column;gap:10px}
+
+  .handstrip{
+    background:var(--panel2);border-radius:10px;padding:6px;display:flex;gap:6px;
+    align-items:stretch;min-height:94px;overflow-x:auto;border:1px solid #cdbfa5;
+  }
+  .handstrip.active{background:#fff8e6;border-color:var(--gold);box-shadow:0 0 0 2px rgba(184,134,11,.25)}
+  .handstrip .lbl{
+    flex:0 0 34px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-size:11px;color:#7a6a52;gap:2px;writing-mode:vertical-rl;letter-spacing:.2em;
+  }
+  .card{
+    flex:0 0 auto;width:66px;height:84px;border-radius:6px;background:#fff;border:1.5px solid #8b7f6a;
+    display:flex;flex-direction:column;align-items:center;padding:3px 2px;cursor:pointer;position:relative;
+    transition:transform .08s, box-shadow .08s;
+  }
+  .card:hover{transform:translateY(-3px);box-shadow:0 4px 10px rgba(0,0,0,.25)}
+  .card.sel{transform:translateY(-6px);box-shadow:0 0 0 3px var(--gold),0 6px 14px rgba(0,0,0,.3)}
+  .card.dis{opacity:.42;cursor:not-allowed;transform:none;box-shadow:none}
+  .card .cname{font-size:12px;font-weight:700;letter-spacing:.04em;line-height:1.15;text-align:center;margin-top:1px}
+  .card .cbig{flex:1;display:flex;align-items:center;justify-content:center;font-size:27px;line-height:1}
+  .card .csub{font-size:9px;color:#6b6152;text-align:center;line-height:1.25;padding-bottom:1px;font-family:system-ui,sans-serif}
+  .card.pawn{border-color:#7a4a1e}.card.pawn .cbig{color:#7a4a1e}
+  .card.unit{border-color:#2e7d4f}.card.unit .cbig{color:#2e7d4f}
+  .card.gear{border-color:var(--blue)}.card.gear .cbig{color:var(--blue)}
+  .card.spell{border-color:#6a3d9a}.card.spell .cname{color:#6a3d9a}
+  .card .cost{
+    position:absolute;top:2px;right:2px;font-size:8px;font-family:system-ui,sans-serif;
+    border:1px solid #6a3d9a;color:#6a3d9a;border-radius:3px;padding:0 3px;background:#fff;
+  }
+  .card .discardmask{
+    position:absolute;inset:0;background:rgba(180,38,44,.72);color:#fff;border-radius:5px;
+    display:flex;align-items:center;justify-content:center;font-size:13px;
+  }
+  .handstrip .empty{color:#9a8e78;font-size:12px;display:flex;align-items:center;padding-left:10px}
+
+  .boardwrap{background:#2b261e;border-radius:12px;padding:8px;margin:8px 0}
+  #board{display:block;width:100%;height:auto;border-radius:6px}
+  #board .hit{fill:transparent;cursor:pointer}
+  #board .pc{cursor:pointer}
+
+  .panel{background:var(--panel);border:1px solid #cdbfa5;border-radius:10px;padding:10px 12px}
+  .panel h3{margin:0 0 6px;font-size:12px;letter-spacing:.14em;color:#7a6a52;font-weight:600}
+  .stat{display:flex;justify-content:space-between;font-size:13px;padding:2px 0}
+  .stat b{font-weight:700}
+  .turnbadge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:13px;color:#fff}
+  .tb-r{background:var(--red)}.tb-b{background:var(--blk)}
+  .ap{display:flex;gap:4px;margin-top:2px}
+  .ap i{width:16px;height:16px;border-radius:50%;border:2px solid var(--gold);display:inline-block}
+  .ap i.on{background:var(--gold)}
+  .popbar{height:7px;border-radius:4px;background:#e2d7c0;overflow:hidden;margin:1px 0 5px}
+  .popbar i{display:block;height:100%;transition:width .15s}
+  #hint{
+    background:#fff8e6;border:1px solid var(--gold);border-radius:8px;padding:8px 12px;font-size:12.5px;
+    line-height:1.5;min-height:38px;
+  }
+  #hint.warn{background:#fdeaea;border-color:#c96a6a}
+  #log{font-size:11.5px;line-height:1.55;max-height:210px;overflow-y:auto;font-family:system-ui,sans-serif}
+  #log div{padding:1px 0;border-bottom:1px dotted #ded2b8}
+  #log .r{color:var(--red)}#log .b{color:var(--blk)}#log .sys{color:#8a7e68}
+  .bridges{display:flex;gap:6px}
+  .bridge{
+    flex:1;text-align:center;border-radius:6px;padding:5px 2px;font-size:11px;border:1.5px solid #cdbfa5;background:#fff;
+  }
+  .bridge.ok{border-color:var(--grn);color:var(--grn)}
+  .bridge.broken{border-color:var(--red);color:var(--red);text-decoration:line-through;background:#fdeaea}
+  .bridge.temp{border-color:var(--blue);color:var(--blue);background:#eaf2fd}
+  .bridge.blocked{border-color:#2e7d4f;background:#eaf6ee}
+  .bridge .blk{font-size:9.5px;color:#2e7d4f}
+  .effects{display:flex;flex-direction:column;gap:3px}
+  .eff{
+    display:flex;justify-content:space-between;gap:6px;align-items:center;
+    font-size:11.5px;padding:3px 7px;border-radius:6px;border-left:4px solid #999;background:#f2ead8;
+  }
+  .eff.r{border-left-color:var(--red)}
+  .eff.b{border-left-color:var(--blk)}
+  .eff b{font-size:11px;color:#8a6a3a;white-space:nowrap}
+  .btnrow{display:flex;gap:6px;flex-wrap:wrap}
+  .btnrow button{
+    flex:1;font:inherit;font-size:12.5px;padding:8px 10px;border-radius:8px;border:1px solid #8b7f6a;
+    background:#fff;color:var(--ink);cursor:pointer;
+  }
+  .btnrow button:hover{background:#f3ead9}
+  .btnrow button:disabled{opacity:.4;cursor:not-allowed}
+  .btnrow button.primary{background:var(--ink);color:#f6ecd8;border-color:#000}
+  .btnrow button.primary:hover{background:#463726}
+  .choices button{
+    display:block;width:100%;text-align:left;font:inherit;font-size:12px;padding:6px 9px;margin:3px 0;
+    border-radius:6px;border:1px solid #8b7f6a;background:#fff;cursor:pointer;
+  }
+  .choices button:hover{background:#f3ead9}
+  .overlay{
+    position:fixed;inset:0;background:rgba(20,16,10,.66);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;
+  }
+  .modal{background:var(--panel);border-radius:12px;padding:18px 22px;max-width:520px;width:100%;max-height:80vh;overflow:auto}
+  .modal h2{margin:0 0 10px;font-size:17px;letter-spacing:.08em}
+  .modal .lines{font-size:13px;line-height:1.7}
+  .modal .lines code{background:#eee3cd;padding:1px 5px;border-radius:4px}
+  .banner{
+    text-align:center;font-size:16px;padding:12px;border-radius:10px;background:#fff3d6;border:2px solid var(--gold);
+    letter-spacing:.1em;
+  }
+  .legend{font-size:11px;color:#7a6a52;line-height:1.7}
+  .legend b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>兵 符</h1>
+    <span class="tag">试玩 DEMO · v0.2.5 规则</span>
+    <span class="spacer"></span>
+    <label class="tag">牌库
+      <select id="mode">
+        <option value="quick">试玩版 30 张</option>
+        <option value="full">完整版 60 张</option>
+      </select>
+    </label>
+    <label class="tag">人口上限
+      <select id="popcap">
+        <option value="6">6</option>
+        <option value="8" selected>8</option>
+        <option value="10">10</option>
+        <option value="12">12</option>
+      </select>
+    </label>
+    <label class="tag">士/象 每方上限
+      <select id="speccap">
+        <option value="1">1</option>
+        <option value="2" selected>2</option>
+        <option value="3">3</option>
+      </select>
+    </label>
+    <button id="btnHelp">规则速查</button>
+    <button id="btnRestart" class="primary">重开一局</button>
+  </header>
+
+  <div class="layout">
+    <div class="boardcol">
+      <div class="handstrip" id="handB"></div>
+      <div class="boardwrap"><svg id="board" viewBox="0 0 436 482" xmlns="http://www.w3.org/2000/svg"></svg></div>
+      <div class="handstrip" id="handR"></div>
+    </div>
+
+    <aside class="side">
+      <div class="panel" id="statusPanel"></div>
+      <div id="hint"></div>
+      <div class="panel">
+        <h3>桥梁</h3>
+        <div class="bridges" id="bridgeBox"></div>
+        <div class="legend" style="margin-top:6px">只有列 3 / 5 / 7 可过河（小兵 / 战车 / 炮兵）。</div>
+      </div>
+      <div class="panel">
+        <h3>持续效果</h3>
+        <div id="effectBox"></div>
+      </div>
+      <div class="panel">
+        <h3>操作</h3>
+        <div class="btnrow" id="btnBox"></div>
+      </div>
+      <div class="panel" id="choicePanel" style="display:none">
+        <h3 id="choiceTitle"></h3>
+        <div class="choices" id="choiceBox"></div>
+      </div>
+      <div class="panel">
+        <h3>战报</h3>
+        <div id="log"></div>
+      </div>
+      <div class="panel">
+        <h3>盘面标记</h3>
+        <div class="legend">
+          <b>绿点</b> 可走 ｜ <b>红圈</b> 可吃 ｜ <b>蓝点</b> 可部署<br>
+          <b>人口</b> 主将 0 ｜ 小兵 1 ｜ 士 / 象 / 骑兵 / 战车 / 炮兵 2<br>
+          <b>士 / 象</b> 每方场上最多各 2 个（手牌不算）<br>
+          <b>断桥 3 回合</b> ｜ 浮桥 2 ｜ 绊马索 2 ｜ 水淹 1 ｜ 空城计 1<br>
+          <b>士</b> 斜 1 格 · 不出九宫 ｜ <b>象</b> 田字 · 塞象眼 · 不过河<br>
+          <b>士 护驾</b> 主将被吃时代死一次 ｜ <b>象 堵桥</b> 站己方桥头封桥，只有马能绕<br>
+          <b>兵</b> 未过河向前 1 格（底线两行内可 2 格）；过河后可前 / 左 / 右<br>
+          <b>車炮</b> 过河只能走列 3 / 5 / 7 ｜ <b>馬</b> 可任意跃河 ｜ <b>帅将</b> 不出九宫
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ============================================================
+   一、规则引擎（纯逻辑，无 DOM 依赖，可被 Node 直接测试）
+   ============================================================ */
+
+var COLS = 9, ROWS = 10;
+var BRIDGE_COLS = [3, 5, 7];
+var PALACE = {
+  r: { c0: 4, c1: 6, r0: 1, r1: 3 },
+  b: { c0: 4, c1: 6, r0: 8, r1: 10 }
+};
+var SPELL_COST = {
+  '增援': 1, '急行军': 0, '断桥': 1, '浮桥': 1, '火攻': 1, '水淹': 1, '绊马索': 1,
+  '声东击西': 1, '移形换位': 1, '反间计': 1, '草船借箭': 1, '空城计': 0,
+  '兵器补给': 1, '探马': 1
+};
+// 持续回合数（0 = 即时结算，不留持续效果）。
+// 数法：N = 该效果会影响「对手接下来的 N 个回合」。
+var SPELL_DUR = {
+  '增援': 0, '急行军': 0, '断桥': 3, '浮桥': 2, '火攻': 0, '水淹': 1, '绊马索': 2,
+  '声东击西': 0, '移形换位': 0, '反间计': 0, '草船借箭': 0, '空城计': 1, '兵器补给': 0, '探马': 0
+};
+var SPELL_TEXT = {
+  '增援': '在己方部署区免费部署 1 个小兵',
+  '急行军': '本回合 +1 AP',
+  '断桥': '指定一座桥，本局剩余时间不可通行',
+  '浮桥': '任意一列架临时桥，持续 2 回合',
+  '火攻': '消灭一个与己方单位相邻的敌方单位',
+  '水淹': '行 5 / 行 6 上所有单位到下回合前不能移动',
+  '绊马索': '目标敌方骑兵 2 个回合不能移动',
+  '声东击西': '将敌方单位（非主将）移动 1 格',
+  '移形换位': '交换己方两个单位的位置',
+  '反间计': '对手随机弃 1 张手牌',
+  '草船借箭': '随机获得对手 1 张手牌',
+  '空城计': '直到你的下回合开始，主将不能被吃',
+  '兵器补给': '从弃牌堆检索 1 张装备牌入手',
+  '探马': '看牌库顶 3 张，或看对手全部手牌'
+};
+
+function inB(c, r) { return c >= 1 && c <= COLS && r >= 1 && r <= ROWS; }
+function K(c, r) { return c + ',' + r; }
+function other(p) { return p === 'r' ? 'b' : 'r'; }
+function inPalace(owner, c, r) {
+  var z = PALACE[owner];
+  return c >= z.c0 && c <= z.c1 && r >= z.r0 && r <= z.r1;
+}
+function isOwnHalf(owner, r) { return owner === 'r' ? r <= 5 : r >= 6; }
+function crossed(owner, r) { return owner === 'r' ? r >= 6 : r <= 5; }
+function crossesRiver(r1, r2) { return (r1 <= 5 && r2 >= 6) || (r1 >= 6 && r2 <= 5); }
+function gearKind(p) { return p.gear || p.kind; }
+function shuffle(a) {
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+
+/* ---------- 牌库 ---------- */
+function buildDeck(mode) {
+  var cards = [], uid = 0;
+  function add(kind, extra, n) {
+    for (var i = 0; i < n; i++) {
+      var c = { id: 'k' + (uid++), kind: kind };
+      if (extra) for (var kk in extra) c[kk] = extra[kk];
+      cards.push(c);
+    }
+  }
+  if (mode === 'quick') {
+    add('pawn', null, 13);
+    add('advisor', null, 1);
+    add('elephant', null, 1);
+    add('gear', { gear: 'horse' }, 4);
+    add('gear', { gear: 'chariot' }, 4);
+    add('gear', { gear: 'cannon' }, 4);
+    add('spell', { spell: '增援' }, 1);
+    add('spell', { spell: '急行军' }, 1);
+    add('spell', { spell: '断桥' }, 1);
+  } else {
+    add('pawn', null, 18);
+    add('advisor', null, 3);
+    add('elephant', null, 3);
+    add('gear', { gear: 'horse' }, 6);
+    add('gear', { gear: 'chariot' }, 6);
+    add('gear', { gear: 'cannon' }, 6);
+    var counts = {
+      '增援': 2, '急行军': 2, '断桥': 2, '浮桥': 2, '火攻': 1, '水淹': 1, '绊马索': 1,
+      '声东击西': 1, '移形换位': 1, '反间计': 1, '草船借箭': 1, '空城计': 1, '兵器补给': 1, '探马': 1
+    };
+    for (var s in counts) add('spell', { spell: s }, counts[s]);
+  }
+  return cards;
+}
+
+/* ---------- 建立对局 ---------- */
+function newGame(mode, popCap, specCap) {
+  mode = mode || 'full';
+  var st = {
+    mode: mode,
+    uid: 1,
+    popCap: popCap || 8,
+    specCap: (typeof specCap === 'number' && specCap > 0) ? specCap : 2,
+    pieces: [],
+    deck: shuffle(buildDeck(mode)),
+    discard: [],
+    hands: { r: [], b: [] },
+    // 持续效果统一列表。所有限时锦囊都走这一套：
+    // { id, type, by, left, ... }  left = 剩余回合，在「打出者的回合开始」时减 1
+    //   type: 'bridge_broken' col | 'bridge_temp' col | 'flood' | 'root' pieceId | 'shield' owner
+    effects: [],
+    turn: 'r',
+    ap: 2,
+    turnNo: 1,
+    phase: 'deploy',        // deploy | play | over
+    deployLeft: { r: 3, b: 3 },
+    deployTurn: 'r',
+    winner: null,
+    lastEvent: null,
+    log: []
+  };
+  st.pieces.push(mkPiece(st, 'r', 'king', 5, 2));
+  st.pieces.push(mkPiece(st, 'b', 'king', 5, 9));
+  for (var i = 0; i < 4; i++) drawCards(st, 'r', 1);
+  for (var j = 0; j < 5; j++) drawCards(st, 'b', 1);
+  logMsg(st, 'sys', '对局开始（' + (mode === 'quick' ? '试玩版 30 张' : '完整版 60 张') + '）。先布阵：红方先放 3 个小兵。');
+  return st;
+}
+
+function mkPiece(st, owner, kind, c, r, card) {
+  return {
+    id: 'p' + (st.uid++), owner: owner, kind: kind, gear: null,
+    card: card || { id: 'x' + (st.uid++), kind: 'pawn' },
+    gearCard: null, c: c, r: r
+  };
+}
+function logMsg(st, cls, text) {
+  st.log.push({ cls: cls, text: text });
+  if (st.log.length > 200) st.log.shift();
+}
+function findPiece(st, id) {
+  for (var i = 0; i < st.pieces.length; i++) if (st.pieces[i].id === id) return st.pieces[i];
+  return null;
+}
+function pieceAt(st, c, r) {
+  for (var i = 0; i < st.pieces.length; i++) if (st.pieces[i].c === c && st.pieces[i].r === r) return st.pieces[i];
+  return null;
+}
+function kings(st) {
+  return st.pieces.filter(function (p) { return p.kind === 'king'; });
+}
+function handLimit() { return 5; }
+
+/* ---------- 人口 ---------- */
+// 主将不占人口；小兵 1 人口；装备牌本身占 1 人口，所以骑兵 / 战车 / 炮兵都是 2 人口。
+function popCost(p) {
+  if (p.kind === 'king') return 0;
+  if (p.kind === 'pawn' && !p.gear) return 1;   // 只有光小兵是 1 人口
+  return 2;                                      // 士 / 象 / 骑兵 / 战车 / 炮兵
+}
+function isUnitCard(card) {
+  return card.kind === 'pawn' || card.kind === 'advisor' || card.kind === 'elephant';
+}
+function cardPopCost(card) { return card.kind === 'pawn' ? 1 : 2; }
+
+/* ---------- 士 / 象 的数量上限 ---------- */
+// 士叠加会让主将杀不死（每个士 = 一条命）；象叠加会把三座桥全封死。
+// 因此每方场上最多各 2 个（与象棋每方 2 士 2 象一致）。算场上，不算手牌。
+function isLimitedKind(kind) { return kind === 'advisor' || kind === 'elephant'; }
+function countOnBoard(st, owner, kind) {
+  var n = 0;
+  for (var i = 0; i < st.pieces.length; i++) {
+    if (st.pieces[i].owner === owner && st.pieces[i].kind === kind) n++;
+  }
+  return n;
+}
+function specLeft(st, owner, kind) {
+  if (!isLimitedKind(kind)) return 99;
+  return st.specCap - countOnBoard(st, owner, kind);
+}
+function popUsed(st, owner) {
+  var n = 0;
+  for (var i = 0; i < st.pieces.length; i++) if (st.pieces[i].owner === owner) n += popCost(st.pieces[i]);
+  return n;
+}
+function popFree(st, owner) { return st.popCap - popUsed(st, owner); }
+function popLeft(st, owner, add) { return st.popCap - popUsed(st, owner) - add; }
+
+/* ---------- 摸牌 ---------- */
+function drawCards(st, p, n) {
+  var got = 0;
+  for (var i = 0; i < n; i++) {
+    if (st.deck.length === 0) {
+      if (st.discard.length === 0) break;
+      st.deck = shuffle(st.discard.splice(0, st.discard.length));
+      logMsg(st, 'sys', '牌库摸空，弃牌堆洗回牌库。');
+    }
+    st.hands[p].push(st.deck.pop());
+    got++;
+  }
+  return got;
+}
+function takePawnFromDeck(st) {
+  for (var i = st.deck.length - 1; i >= 0; i--) {
+    if (st.deck[i].kind === 'pawn') return st.deck.splice(i, 1)[0];
+  }
+  return { id: 'x' + (st.uid++), kind: 'pawn' };
+}
+
+/* ---------- 持续效果 ---------- */
+// 统一规则：所有限时锦囊都产生一个带 left（剩余回合）的效果，
+// 在「打出者自己的回合开始」时减 1，减到 0 失效。
+// 数法：left = N 表示「对手接下来的 N 个回合」仍受影响。
+function addEffect(st, eff) {
+  eff.id = 'e' + (st.uid++);
+  st.effects.push(eff);
+  return eff;
+}
+function hasEffect(st, type, pred) {
+  for (var i = 0; i < st.effects.length; i++) {
+    var e = st.effects[i];
+    if (e.type === type && (!pred || pred(e))) return true;
+  }
+  return false;
+}
+function isRooted(st, pieceId) { return hasEffect(st, 'root', function (e) { return e.pieceId === pieceId; }); }
+function isFlooded(st, r) { return hasEffect(st, 'flood') && (r === 5 || r === 6); }
+function isShielded(st, owner) { return hasEffect(st, 'shield', function (e) { return e.owner === owner; }); }
+
+var EFFECT_TEXT = {
+  bridge_broken: function (e) { return '断桥 · 列 ' + e.col; },
+  bridge_temp: function (e) { return '浮桥 · 列 ' + e.col; },
+  flood: function () { return '水淹 · 行 5/6 封锁'; },
+  root: function (e, st) {
+    var p = findPiece(st, e.pieceId);
+    return '绊马索 · ' + (p ? (pieceLabel(p) + ' ' + cellName(p.c, p.r)) : '（目标已阵亡）');
+  },
+  shield: function (e) { return '空城计 · ' + sideName(e.owner) + '主将免疫'; }
+};
+
+/* ---------- 桥梁 ---------- */
+// 桥的通行与否完全由持续效果决定：浮桥开、断桥关
+function bridgeOpen(st, col) {
+  if (hasEffect(st, 'bridge_temp', function (e) { return e.col === col; })) return true;
+  if (BRIDGE_COLS.indexOf(col) >= 0) {
+    return !hasEffect(st, 'bridge_broken', function (e) { return e.col === col; });
+  }
+  return false;
+}
+function bridgeStateOf(st, col) {
+  if (hasEffect(st, 'bridge_temp', function (e) { return e.col === col; })) return 'temp';
+  if (BRIDGE_COLS.indexOf(col) >= 0) {
+    return hasEffect(st, 'bridge_broken', function (e) { return e.col === col; }) ? 'broken' : 'ok';
+  }
+  return 'none';
+}
+
+/* ---------- 部署区 ---------- */
+// unitKind: 'pawn' | 'advisor' | 'elephant'
+//   士  -> 只能部署在己方九宫内的空点（贴身侍卫）
+//   小兵 / 象 -> 主将周围曼哈顿距离 ≤ 2 且不过河
+function deployCells(st, owner, unitKind) {
+  var king = null, arr = st.pieces;
+  for (var i = 0; i < arr.length; i++) if (arr[i].kind === 'king' && arr[i].owner === owner) king = arr[i];
+  var res = [];
+  if (!king) return res;
+  for (var c = 1; c <= COLS; c++) {
+    for (var r = 1; r <= ROWS; r++) {
+      if (pieceAt(st, c, r)) continue;
+      if (unitKind === 'advisor') {
+        if (!inPalace(owner, c, r)) continue;
+      } else {
+        if (Math.abs(c - king.c) + Math.abs(r - king.r) > 2) continue;
+        if (!isOwnHalf(owner, r)) continue;
+      }
+      res.push({ c: c, r: r });
+    }
+  }
+  return res;
+}
+
+/* ---------- 移动生成 ---------- */
+function canCapture(st, t) {
+  return !(t.kind === 'king' && isShielded(st, t.owner));
+}
+function crossOK(st, p, c2, r2) {
+  if (!crossesRiver(p.r, r2)) return true;
+  if (gearKind(p) === 'horse') return true;                 // 骑兵跃河，不受桥与象阻拦
+  var blk = pieceAt(st, p.c, r2);                           // 对岸桥头上的守卫
+  if (blk && blk.kind === 'elephant' && blk.owner !== p.owner) return false;   // 象堵桥
+  return bridgeOpen(st, p.c);
+}
+function pushMove(st, p, list, c, r) {
+  if (!inB(c, r)) return;
+  var t = pieceAt(st, c, r);
+  if (t) {
+    if (t.owner === p.owner) return;
+    if (!canCapture(st, t)) return;
+    if (!crossOK(st, p, c, r)) return;
+    list.push({ c: c, r: r, cap: t.id });
+    return;
+  }
+  if (!crossOK(st, p, c, r)) return;
+  list.push({ c: c, r: r, cap: null });
+}
+
+function pawnMoves(st, p) {
+  var res = [], dir = p.owner === 'r' ? 1 : -1;
+  pushMove(st, p, res, p.c, p.r + dir);
+  var startZone = p.owner === 'r' ? p.r <= 2 : p.r >= 9;
+  if (startZone && !pieceAt(st, p.c, p.r + dir)) pushMove(st, p, res, p.c, p.r + 2 * dir);
+  if (crossed(p.owner, p.r)) {
+    pushMove(st, p, res, p.c - 1, p.r);
+    pushMove(st, p, res, p.c + 1, p.r);
+  }
+  return res;
+}
+function horseMoves(st, p) {
+  var res = [];
+  var D = [[1, 2], [2, 1], [2, -1], [1, -2], [-1, -2], [-2, -1], [-2, 1], [-1, 2]];
+  for (var i = 0; i < D.length; i++) {
+    var dc = D[i][0], dr = D[i][1];
+    var c = p.c + dc, r = p.r + dr;
+    if (!inB(c, r)) continue;
+    var lc = p.c + (Math.abs(dc) === 2 ? (dc > 0 ? 1 : -1) : 0);
+    var lr = p.r + (Math.abs(dr) === 2 ? (dr > 0 ? 1 : -1) : 0);
+    if (pieceAt(st, lc, lr)) continue;           // 蹩马腿
+    pushMove(st, p, res, c, r);
+  }
+  return res;
+}
+function rayMoves(st, p, dc, dr, isCannon) {
+  var res = [], c = p.c + dc, r = p.r + dr, screen = false;
+  while (inB(c, r)) {
+    var t = pieceAt(st, c, r);
+    if (!isCannon) {
+      if (!t) { pushMove(st, p, res, c, r); c += dc; r += dr; continue; }
+      pushMove(st, p, res, c, r); break;
+    }
+    if (!screen) {
+      if (!t) { pushMove(st, p, res, c, r); c += dc; r += dr; continue; }
+      screen = true; c += dc; r += dr; continue;
+    }
+    if (!t) { c += dc; r += dr; continue; }
+    pushMove(st, p, res, c, r); break;           // 炮打隔子
+  }
+  return res;
+}
+function chariotMoves(st, p) {
+  return rayMoves(st, p, 1, 0, false).concat(rayMoves(st, p, -1, 0, false),
+    rayMoves(st, p, 0, 1, false), rayMoves(st, p, 0, -1, false));
+}
+function cannonMoves(st, p) {
+  return rayMoves(st, p, 1, 0, true).concat(rayMoves(st, p, -1, 0, true),
+    rayMoves(st, p, 0, 1, true), rayMoves(st, p, 0, -1, true));
+}
+function kingMoves(st, p) {
+  var res = [], D = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  for (var i = 0; i < D.length; i++) {
+    var c = p.c + D[i][0], r = p.r + D[i][1];
+    if (!inB(c, r) || !inPalace(p.owner, c, r)) continue;
+    pushMove(st, p, res, c, r);
+  }
+  return res;
+}
+// 士：斜走 1 格，不出九宫
+function advisorMoves(st, p) {
+  var res = [], D = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+  for (var i = 0; i < D.length; i++) {
+    var c = p.c + D[i][0], r = p.r + D[i][1];
+    if (!inB(c, r) || !inPalace(p.owner, c, r)) continue;
+    pushMove(st, p, res, c, r);
+  }
+  return res;
+}
+// 象：斜走 2 格（田字），塞象眼，永不过河
+function elephantMoves(st, p) {
+  var res = [], D = [[2, 2], [2, -2], [-2, 2], [-2, -2]];
+  for (var i = 0; i < D.length; i++) {
+    var dc = D[i][0], dr = D[i][1];
+    var c = p.c + dc, r = p.r + dr;
+    if (!inB(c, r)) continue;
+    if (crossesRiver(p.r, r)) continue;                       // 象不认桥，就是不过河
+    if (pieceAt(st, p.c + dc / 2, p.r + dr / 2)) continue;    // 塞象眼
+    pushMove(st, p, res, c, r);
+  }
+  return res;
+}
+function legalMoves(st, p) {
+  if (st.phase !== 'play' || st.winner) return [];
+  if (isRooted(st, p.id)) return [];
+  if (isFlooded(st, p.r)) return [];
+  var kind = gearKind(p);
+  if (kind === 'pawn') return pawnMoves(st, p);
+  if (kind === 'horse') return horseMoves(st, p);
+  if (kind === 'chariot') return chariotMoves(st, p);
+  if (kind === 'cannon') return cannonMoves(st, p);
+  if (kind === 'king') return kingMoves(st, p);
+  if (kind === 'advisor') return advisorMoves(st, p);
+  if (kind === 'elephant') return elephantMoves(st, p);
+  return [];
+}
+
+/* ---------- 执行动作 ---------- */
+function removePiece(st, target) {
+  st.pieces = st.pieces.filter(function (x) { return x.id !== target.id; });
+  if (target.card) st.discard.push(target.card);
+  if (target.gearCard) st.discard.push(target.gearCard);
+  // 目标阵亡，挂在它身上的持续效果一并失效
+  st.effects = st.effects.filter(function (e) { return !(e.type === 'root' && e.pieceId === target.id); });
+}
+function doMove(st, pieceId, m) {
+  var p = findPiece(st, pieceId);
+  if (!p || st.ap <= 0) return false;
+  st.lastEvent = null;
+  var legal = legalMoves(st, p).filter(function (x) { return x.c === m.c && x.r === m.r; });
+  if (!legal.length) return false;
+  var target = m.cap ? findPiece(st, m.cap) : null;
+  if (target) {
+    // 护驾：主将被吃时，九宫内的士代死一次
+    if (target.kind === 'king') {
+      var guard = null;
+      for (var gi = 0; gi < st.pieces.length; gi++) {
+        var gp = st.pieces[gi];
+        if (gp.owner === target.owner && gp.kind === 'advisor') { guard = gp; break; }
+      }
+      if (guard) {
+        removePiece(st, guard);
+        st.ap -= 1;
+        st.lastEvent = { type: 'guard', owner: target.owner };
+        logMsg(st, target.owner, '★ ' + sideName(target.owner) + '的士挺身护驾，替主将挡下这一击！士阵亡，主将存活。');
+        return true;
+      }
+    }
+    var isKing = target.kind === 'king';
+    var label = pieceLabel(target);
+    removePiece(st, target);
+    logMsg(st, p.owner, sideName(p.owner) + '的' + pieceLabel(p) + '吃掉' + sideName(target.owner) + label +
+      (target.gearCard ? '（连带装备）' : ''));
+    if (isKing) {
+      st.winner = p.owner; st.phase = 'over';
+      logMsg(st, 'sys', '★ ' + sideName(p.owner) + '吃掉了对方主将，获胜！');
+    }
+  }
+  p.c = m.c; p.r = m.r;
+  st.ap -= 1;
+  return true;
+}
+function doDeploy(st, owner, handIdx, c, r) {
+  var card = st.hands[owner][handIdx];
+  if (!card || !isUnitCard(card) || st.ap <= 0) return false;
+  if (popLeft(st, owner, cardPopCost(card)) < 0) return false;      // 人口上限
+  if (specLeft(st, owner, card.kind) <= 0) return false;            // 士 / 象 数量上限
+  var ok = deployCells(st, owner, card.kind).some(function (x) { return x.c === c && x.r === r; });
+  if (!ok) return false;
+  st.hands[owner].splice(handIdx, 1);
+  st.pieces.push(mkPiece(st, owner, card.kind, c, r, card));
+  st.ap -= 1;
+  logMsg(st, owner, sideName(owner) + '在 (' + c + ',' + r + ') 部署了' + pieceLabel({ kind: card.kind, owner: owner, gear: null }) +
+    '（人口 ' + popUsed(st, owner) + '/' + st.popCap + '）');
+  return true;
+}
+function doEquip(st, owner, handIdx, pieceId) {
+  var card = st.hands[owner][handIdx];
+  var p = findPiece(st, pieceId);
+  if (!card || card.kind !== 'gear' || st.ap <= 0) return false;
+  if (!p || p.owner !== owner || p.kind !== 'pawn' || p.gear) return false;
+  if (popLeft(st, owner, 1) < 0) return false;              // 装备 = 该单位 1 人口 -> 2 人口
+  st.hands[owner].splice(handIdx, 1);
+  p.gear = card.gear; p.gearCard = card;
+  st.ap -= 1;
+  logMsg(st, owner, sideName(owner) + '的小兵在 (' + p.c + ',' + p.r + ') 装备了' + GEARCHAR[card.gear] +
+    '，成为' + unitName(card.gear) + '（人口 ' + popUsed(st, owner) + '/' + st.popCap + '）');
+  return true;
+}
+// 解散：1 AP，把自己的一个单位（连同装备）送进共用弃牌堆，释放人口
+function doDisband(st, owner, pieceId) {
+  var p = findPiece(st, pieceId);
+  if (!p || p.owner !== owner || p.kind === 'king' || st.ap <= 0) return false;
+  var label = pieceLabel(p);
+  removePiece(st, p);
+  st.ap -= 1;
+  logMsg(st, owner, sideName(owner) + '解散了自己的' + label + '（人口 ' + popUsed(st, owner) + '/' + st.popCap + '）');
+  return true;
+}
+function doSetupDeploy(st, owner, c, r) {
+  if (st.phase !== 'deploy' || st.deployTurn !== owner) return false;
+  if (st.deployLeft[owner] <= 0) return false;
+  if (popLeft(st, owner, 1) < 0) return false;
+  if (!inB(c, r) || !isOwnHalf(owner, r) || pieceAt(st, c, r)) return false;
+  var card = takePawnFromDeck(st);
+  st.pieces.push(mkPiece(st, owner, 'pawn', c, r, card));
+  st.deployLeft[owner]--;
+  if (st.deployLeft[owner] === 0) {
+    if (owner === 'r') {
+      st.deployTurn = 'b';
+      logMsg(st, 'sys', '红方布阵完毕，黑方布阵。');
+    } else {
+      st.phase = 'play';
+      logMsg(st, 'sys', '布阵完毕，红方先行。');
+      startTurn(st, 'r', true);
+    }
+  }
+  return true;
+}
+function killByFire(st, target) {
+  var label = pieceLabel(target);
+  removePiece(st, target);
+  logMsg(st, st.turn, '火攻烧掉了' + sideName(target.owner) + '的' + label + '（位于 ' + target.c + ',' + target.r + '）');
+}
+
+/* ---------- 回合 ---------- */
+function startTurn(st, p, first) {
+  st.turn = p;
+  st.ap = 2;
+  // 统一结算：打出者自己的回合开始时，把自己留下的持续效果各减 1
+  var kept = [];
+  for (var i = 0; i < st.effects.length; i++) {
+    var e = st.effects[i];
+    if (e.by !== p) { kept.push(e); continue; }
+    e.left--;
+    if (e.left > 0) { kept.push(e); continue; }
+    var txt = EFFECT_TEXT[e.type] ? EFFECT_TEXT[e.type](e, st) : e.type;
+    logMsg(st, 'sys', '「' + txt + '」的持续回合数用尽，效果结束。');
+  }
+  st.effects = kept;
+  if (!first) logMsg(st, 'sys', '—— 轮到' + sideName(p) + '（第 ' + st.turnNo + ' 回合）——');
+  var got = drawCards(st, p, 1);
+  if (got) logMsg(st, p, sideName(p) + '摸 1 张牌');
+}
+function endTurn(st) {
+  var p = st.turn;
+  st.turnNo++;
+  startTurn(st, other(p), false);
+}
+
+/* ---------- 名称 ---------- */
+var GEARCHAR = { horse: '馬', chariot: '車', cannon: '炮' };
+function unitName(g) {
+  return g === 'horse' ? '骑兵' : g === 'chariot' ? '战车' : g === 'cannon' ? '炮兵'
+    : g === 'advisor' ? '士' : g === 'elephant' ? '象' : g === 'pawn' ? '小兵' : String(g);
+}
+function pieceLabel(p) {
+  if (p.kind === 'king') return p.owner === 'r' ? '帅' : '将';
+  if (p.kind === 'advisor') return p.owner === 'r' ? '仕' : '士';
+  if (p.kind === 'elephant') return p.owner === 'r' ? '相' : '象';
+  if (p.gear) return GEARCHAR[p.gear];
+  return p.owner === 'r' ? '兵' : '卒';
+}
+function sideName(o) { return o === 'r' ? '红方' : '黑方'; }
+function cellName(c, r) { return '(' + c + ',' + r + ')'; }
+
+/* ---------- 火攻等辅助 ---------- */
+function adjacent8(c, r) {
+  var out = [];
+  for (var dc = -1; dc <= 1; dc++) for (var dr = -1; dr <= 1; dr++) {
+    if (!dc && !dr) continue;
+    if (inB(c + dc, r + dr)) out.push({ c: c + dc, r: r + dr });
+  }
+  return out;
+}
+function fireTargets(st, owner) {
+  var enemy = other(owner), out = [];
+  st.pieces.forEach(function (t) {
+    if (t.owner !== enemy || t.kind === 'king') return;
+    var near = adjacent8(t.c, t.r).some(function (x) {
+      var q = pieceAt(st, x.c, x.r);
+      return q && q.owner === owner;
+    });
+    if (near) out.push(t);
+  });
+  return out;
+}
+function shoveTargets(st, owner) {
+  var enemy = other(owner), out = [];
+  st.pieces.forEach(function (t) {
+    if (t.owner !== enemy || t.kind === 'king') return;
+    var cells = adjacent8(t.c, t.r).filter(function (x) {
+      if (pieceAt(st, x.c, x.r)) return false;
+      if (crossesRiver(t.r, x.r)) return false;   // 不得因此过河
+      return true;
+    });
+    if (cells.length) out.push({ piece: t, cells: cells });
+  });
+  return out;
+}
+function swapTargets(st, owner) {
+  return st.pieces.filter(function (p) { return p.owner === owner; });
+}
+
+var ENGINE = {
+  COLS: COLS, ROWS: ROWS, BRIDGE_COLS: BRIDGE_COLS, SPELL_COST: SPELL_COST, SPELL_TEXT: SPELL_TEXT,
+  newGame: newGame, buildDeck: buildDeck, legalMoves: legalMoves, doMove: doMove,
+  doDeploy: doDeploy, doEquip: doEquip, doSetupDeploy: doSetupDeploy, endTurn: endTurn,
+  startTurn: startTurn, deployCells: deployCells, bridgeOpen: bridgeOpen, bridgeStateOf: bridgeStateOf,
+  pieceAt: pieceAt, findPiece: findPiece, drawCards: drawCards, fireTargets: fireTargets,
+  shoveTargets: shoveTargets, swapTargets: swapTargets, gearKind: gearKind, inPalace: inPalace,
+  logMsg: logMsg, killByFire: killByFire, other: other, K: K, cellName: cellName,
+  pieceLabel: pieceLabel, sideName: sideName, unitName: unitName, GEARCHAR: GEARCHAR,
+  popCost: popCost, popUsed: popUsed, popFree: popFree, popLeft: popLeft, doDisband: doDisband,
+  isUnitCard: isUnitCard, cardPopCost: cardPopCost, advisorMoves: advisorMoves, elephantMoves: elephantMoves,
+  isLimitedKind: isLimitedKind, countOnBoard: countOnBoard, specLeft: specLeft,
+  SPELL_DUR: SPELL_DUR, addEffect: addEffect, hasEffect: hasEffect,
+  isRooted: isRooted, isFlooded: isFlooded, isShielded: isShielded
+};
+if (typeof globalThis !== 'undefined') globalThis.__ENGINE = ENGINE;
+
+/* ============================================================
+   二、界面层（DOM 相关代码只在浏览器执行；boardSVG 为纯字符串函数，可在 Node 中测试）
+   ============================================================ */
+
+var CELL = 46, MG = 34;
+function pt(c, r) { return { x: MG + (c - 1) * CELL, y: MG + (ROWS - r) * CELL }; }
+
+var st = null;
+var ui = {
+  selected: null, moves: [], pending: null, targetCells: [], targetPieces: [],
+  discardMode: false, info: null, choices: null, choiceTitle: '', notice: '', warn: false
+};
+
+function el(id) { return document.getElementById(id); }
+
+function startGame() {
+  st = newGame(el('mode').value, +el('popcap').value, +el('speccap').value);
+  ui = {
+    selected: null, moves: [], pending: null, targetCells: [], targetPieces: [],
+    discardMode: false, info: null, choices: null, choiceTitle: '', notice: '', warn: false
+  };
+  setHint('布阵阶段：红方在自己半场（行 1–5）点任意空格放 3 个小兵。');
+  render();
+}
+
+function setHint(t, warn) { ui.notice = t; ui.warn = !!warn; }
+
+/* ---------- 棋盘渲染 ---------- */
+function boardSVG(S, U) {
+  S = S || st; U = U || ui;
+  var s = '';
+  s += '<rect x="1" y="1" width="434" height="480" rx="6" fill="#f6ecd8" stroke="#8a6a3a" stroke-width="2"/>';
+  s += '<rect x="34" y="34" width="368" height="414" fill="none" stroke="#3a2a18" stroke-width="2.4"/>';
+
+  var i;
+  s += '<g stroke="#3a2a18" stroke-width="1.1">';
+  for (i = 1; i <= ROWS; i++) { var y = pt(1, i).y; s += '<line x1="34" y1="' + y + '" x2="402" y2="' + y + '"/>'; }
+  s += '<line x1="34" y1="34" x2="34" y2="448"/><line x1="402" y1="34" x2="402" y2="448"/>';
+  for (i = 2; i <= 8; i++) {
+    var x = pt(i, 1).x;
+    s += '<line x1="' + x + '" y1="34" x2="' + x + '" y2="218"/>';
+    s += '<line x1="' + x + '" y1="264" x2="' + x + '" y2="448"/>';
+  }
+  s += '<line x1="172" y1="448" x2="264" y2="356"/><line x1="264" y1="448" x2="172" y2="356"/>';
+  s += '<line x1="172" y1="34" x2="264" y2="126"/><line x1="264" y1="34" x2="172" y2="126"/>';
+  s += '</g>';
+
+  s += '<text x="172" y="241" font-size="19" fill="#8a6a3a" text-anchor="middle" letter-spacing="3">楚河</text>';
+  s += '<text x="264" y="241" font-size="19" fill="#8a6a3a" text-anchor="middle" letter-spacing="3">汉界</text>';
+
+  // 桥梁
+  BRIDGE_COLS.forEach(function (col) {
+    var x = pt(col, 1).x, state = bridgeStateOf(S, col);
+    var colr = state === 'broken' ? '#c0392b' : state === 'temp' ? '#1f5fa8' : '#b8860b';
+    s += '<g data-bridge="' + col + '" style="cursor:pointer">';
+    s += '<rect x="' + (x - 12) + '" y="216" width="24" height="50" fill="transparent"/>';
+    s += '<line x1="' + x + '" y1="218" x2="' + x + '" y2="264" stroke="' + colr + '" stroke-width="5" stroke-linecap="round"' +
+      (state === 'broken' ? ' stroke-dasharray="5 4"' : '') + '/>';
+    s += '</g>';
+    if (state === 'broken') {
+      s += '<text x="' + x + '" y="246" font-size="15" fill="#c0392b" text-anchor="middle" dominant-baseline="central">✕</text>';
+    }
+  });
+
+  // 高亮：可部署 / 目标格
+  U.targetCells.forEach(function (k) {
+    var a = k.split(','), p = pt(+a[0], +a[1]);
+    s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="16" fill="#1f5fa8" opacity="0.3"/>';
+    s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="16" fill="none" stroke="#1f5fa8" stroke-width="2"/>';
+  });
+  // 高亮：合法走法
+  U.moves.forEach(function (m) {
+    var p = pt(m.c, m.r);
+    if (m.cap) {
+      s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="18.5" fill="none" stroke="#c0392b" stroke-width="3"/>';
+    } else {
+      s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="7" fill="#2e7d4f" opacity="0.75"/>';
+    }
+  });
+  // 目标棋子
+  U.targetPieces.forEach(function (id) {
+    var q = findPiece(S, id); if (!q) return;
+    var p = pt(q.c, q.r);
+    s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="19" fill="none" stroke="#6a3d9a" stroke-width="3" stroke-dasharray="4 3"/>';
+  });
+
+  // 命中格：必须在高亮之上、棋子之下，否则点不到棋子
+  for (var hc = 1; hc <= COLS; hc++) for (var hr = 1; hr <= ROWS; hr++) {
+    var hq = pt(hc, hr);
+    s += '<rect class="hit" data-c="' + hc + '" data-r="' + hr + '" x="' + (hq.x - 17) + '" y="' + (hq.y - 17) + '" width="34" height="34"/>';
+  }
+
+  // 棋子（最上层，优先响应点击）
+  S.pieces.forEach(function (q) {
+    var p = pt(q.c, q.r);
+    var color = q.owner === 'r' ? '#b4262c' : '#1d1d1d';
+    var ch = pieceLabel(q);
+    var isSel = U.selected === q.id;
+    s += '<g class="pc" data-pid="' + q.id + '">';
+    s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="17" fill="#fff" stroke="' + color + '" stroke-width="' + (isSel ? 4 : 2.2) + '"/>';
+    s += '<text x="' + p.x + '" y="' + p.y + '" text-anchor="middle" dominant-baseline="central" font-size="19" fill="' + color + '" font-family="serif">' + ch + '</text>';
+    if (q.gear) {
+      s += '<circle cx="' + (p.x + 12) + '" cy="' + (p.y + 12) + '" r="6.5" fill="#7a4a1e"/>';
+      s += '<text x="' + (p.x + 12) + '" y="' + (p.y + 13) + '" text-anchor="middle" dominant-baseline="central" font-size="8" fill="#fff" font-family="serif">兵</text>';
+    }
+    if (isRooted(S, q.id)) {
+      s += '<text x="' + (p.x - 13) + '" y="' + (p.y - 12) + '" font-size="11" fill="#c0392b" text-anchor="middle">缚</text>';
+    }
+    if (q.kind === 'king' && isShielded(S, q.owner)) {
+      s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="20.5" fill="none" stroke="#1f5fa8" stroke-width="2" stroke-dasharray="3 3"/>';
+    }
+    // 象站在桥头 = 该桥被堵
+    if (q.kind === 'elephant' && BRIDGE_COLS.indexOf(q.c) >= 0 && (q.r === 5 || q.r === 6)) {
+      s += '<circle cx="' + (p.x - 13) + '" cy="' + (p.y - 12) + '" r="7.5" fill="#2e7d4f"/>';
+      s += '<text x="' + (p.x - 13) + '" y="' + (p.y - 11.5) + '" text-anchor="middle" dominant-baseline="central" font-size="9" fill="#fff" font-family="serif">堵</text>';
+    }
+    s += '</g>';
+  });
+
+  return s;
+}
+ENGINE.boardSVG = boardSVG;
+ENGINE.pt = pt;
+
+/* ---------- 手牌渲染 ---------- */
+function cardHTML(card, owner, idx) {
+  var cls = isUnitCard(card) ? (card.kind === 'pawn' ? 'pawn' : 'unit')
+    : card.kind === 'gear' ? 'gear' : 'spell';
+  var name, big = '', sub = '', cost = '';
+  if (card.kind === 'pawn') { name = '小兵'; big = '兵'; sub = '1 人口'; }
+  else if (card.kind === 'advisor') { name = '士'; big = '士'; sub = '九宫侍卫 · 2 人口'; }
+  else if (card.kind === 'elephant') { name = '象'; big = '象'; sub = '田字防守 · 2 人口'; }
+  else if (card.kind === 'gear') { name = unitName(card.gear); big = GEARCHAR[card.gear]; sub = '装备小兵 · 2 人口'; }
+  else { name = card.spell; cost = '<span class="cost">' + SPELL_COST[card.spell] + 'AP</span>'; }
+  var sel = ui.pending && ui.pending.handIdx === idx && ui.pending.owner === owner ? ' sel' : '';
+  var dis = '';
+  if (st.phase !== 'play' || st.turn !== owner || st.winner) dis = ' dis';
+  var mask = ui.discardMode && st.turn === owner ? '<div class="discardmask">弃</div>' : '';
+  return '<div class="card ' + cls + sel + dis + '" data-hand="' + idx + '" data-owner="' + owner + '">' +
+    cost + '<div class="cname">' + name + '</div><div class="cbig">' + big + '</div>' +
+    '<div class="csub">' + sub + '</div>' + mask + '</div>';
+}
+function renderHands() {
+  ['b', 'r'].forEach(function (owner) {
+    var box = el(owner === 'b' ? 'handB' : 'handR');
+    var h = st.hands[owner];
+    var html = '<div class="lbl">' + (owner === 'r' ? '红方手牌' : '黑方手牌') + '<span>' + h.length + '/' + handLimit() + '</span></div>';
+    if (!h.length) html += '<div class="empty">（无手牌）</div>';
+    h.forEach(function (c, i) { html += cardHTML(c, owner, i); });
+    box.className = 'handstrip' + (st.turn === owner && st.phase === 'play' && !st.winner ? ' active' : '');
+    box.innerHTML = html;
+  });
+}
+
+/* ---------- 侧栏 ---------- */
+function popBar(name, used, cap, owner) {
+  var over = used > cap;
+  var pct = Math.min(100, Math.round(used / cap * 100));
+  var color = over ? '#c0392b' : owner === 'r' ? '#b4262c' : '#1d1d1d';
+  return '<div class="stat" style="padding-bottom:0"><span>' + name + '</span><b' +
+    (over ? ' style="color:#c0392b"' : '') + '>' + used + ' / ' + cap + (over ? ' 超编' : '') + '</b></div>' +
+    '<div class="popbar"><i style="width:' + pct + '%;background:' + color + '"></i></div>';
+}
+
+function renderSide() {
+  var turnTxt = st.phase === 'deploy'
+    ? (st.deployTurn === 'r' ? '布阵 · 红方' : '布阵 · 黑方')
+    : (st.winner ? '对局结束' : '轮到 ' + sideName(st.turn));
+  var badge = st.phase === 'deploy' ? (st.deployTurn === 'r' ? 'tb-r' : 'tb-b') : (st.turn === 'r' ? 'tb-r' : 'tb-b');
+  var apHtml = '';
+  for (var i = 1; i <= 5; i++) apHtml += '<i class="' + (i <= st.ap ? 'on' : '') + '"></i>';
+  var s = '<h3>状态</h3>';
+  s += '<div class="stat"><span>阶段</span><b><span class="turnbadge ' + badge + '">' + turnTxt + '</span></b></div>';
+  s += '<div class="stat"><span>行动点 AP</span><b>' + st.ap + '</b></div><div class="ap">' + apHtml + '</div>';
+  s += '<div class="stat" style="margin-top:8px"><span>人口上限</span><b>' + st.popCap + '</b></div>';
+  s += popBar('红方人口', popUsed(st, 'r'), st.popCap, 'r');
+  s += popBar('黑方人口', popUsed(st, 'b'), st.popCap, 'b');
+  s += '<div class="stat" style="margin-top:6px"><span>牌库 / 弃牌堆</span><b>' + st.deck.length + ' / ' + st.discard.length + '</b></div>';
+  s += '<div class="stat"><span>场上单位</span><b>' + st.pieces.length + '</b></div>';
+  s += '<div class="stat"><span>士 / 象 每方上限</span><b>各 ' + st.specCap + '</b></div>';
+  s += '<div class="legend" style="font-size:11px;margin-top:-2px">' +
+    '红 士 ' + countOnBoard(st, 'r', 'advisor') + '/' + st.specCap + ' · 象 ' + countOnBoard(st, 'r', 'elephant') + '/' + st.specCap + '<br>' +
+    '黑 士 ' + countOnBoard(st, 'b', 'advisor') + '/' + st.specCap + ' · 象 ' + countOnBoard(st, 'b', 'elephant') + '/' + st.specCap +
+    '</div>';
+  if (st.phase === 'deploy') {
+    s += '<div class="stat"><span>剩余布阵</span><b>红 ' + st.deployLeft.r + ' / 黑 ' + st.deployLeft.b + '</b></div>';
+  }
+  if (isFlooded(st, 5)) s += '<div class="stat"><span>水淹</span><b style="color:#1f5fa8">行 5 / 6 封锁中</b></div>';
+  el('statusPanel').innerHTML = s;
+
+  var bs = '';
+  BRIDGE_COLS.forEach(function (col) {
+    var state = bridgeStateOf(st, col);
+    var label = state === 'broken' ? '断' : state === 'temp' ? '浮桥' : '通';
+    var q5 = pieceAt(st, col, 5), q6 = pieceAt(st, col, 6);
+    var blk = null;
+    if (q5 && q5.kind === 'elephant') blk = q5.owner;
+    if (q6 && q6.kind === 'elephant') blk = q6.owner;
+    bs += '<div class="bridge ' + state + (blk ? ' blocked' : '') + '">列 ' + col + '<br><b>' + label + '</b>' +
+      (blk ? '<br><span class="blk">象堵 ' + (blk === 'r' ? '红' : '黑') + '</span>' : '') + '</div>';
+  });
+  el('bridgeBox').innerHTML = bs;
+  // 持续效果一览（剩余回合）
+  var effBox = el('effectBox');
+  if (effBox) {
+    if (!st.effects.length) {
+      effBox.innerHTML = '<div class="legend" style="font-size:11px">（当前没有持续效果）</div>';
+    } else {
+      effBox.innerHTML = '<div class="effects">' + st.effects.map(function (e) {
+        var txt = EFFECT_TEXT[e.type] ? EFFECT_TEXT[e.type](e, st) : e.type;
+        return '<div class="eff ' + e.by + '"><span>' + txt + '</span><b>剩 ' + e.left + ' 回合</b></div>';
+      }).join('') + '</div>' +
+        '<div class="legend" style="font-size:10.5px;margin-top:4px">每次该效果<b>打出者</b>的回合开始时减 1，减到 0 失效。</div>';
+    }
+  }
+  el('hint').textContent = ui.notice;
+  el('hint').className = ui.warn ? 'warn' : '';
+
+  var btns = '';
+  var selP = ui.selected ? findPiece(st, ui.selected) : null;
+  var canDis = !!(selP && selP.kind !== 'king' && st.phase === 'play' && st.ap >= 1 && !st.winner);
+  btns += '<button id="btnDraw"' + (st.phase !== 'play' || st.ap < 1 || st.winner ? ' disabled' : '') + '>额外摸牌（1 AP）</button>';
+  btns += '<button id="btnDisband"' + (canDis ? '' : ' disabled') + '>解散选中单位（1 AP）</button>';
+  btns += '<button id="btnCancel"' + (ui.pending || ui.selected ? '' : ' disabled') + '>取消选择</button>';
+  btns += '<button id="btnEnd" class="primary"' + (st.phase !== 'play' || st.winner ? ' disabled' : '') + '>结束回合</button>';
+  el('btnBox').innerHTML = btns;
+
+  var cp = el('choicePanel');
+  if (ui.choices) {
+    cp.style.display = '';
+    el('choiceTitle').textContent = ui.choiceTitle;
+    el('choiceBox').innerHTML = ui.choices.map(function (c, i) {
+      return '<button data-choice="' + i + '">' + c.label + '</button>';
+    }).join('');
+  } else cp.style.display = 'none';
+
+  var lg = st.log.slice(-60).reverse().map(function (x) {
+    var cls = x.cls === 'r' ? 'r' : x.cls === 'b' ? 'b' : 'sys';
+    return '<div class="' + cls + '">' + x.text + '</div>';
+  }).join('');
+  el('log').innerHTML = lg;
+}
+
+function render() {
+  if (typeof document === 'undefined') return;   // 让交互链路能在 Node 里跑测试
+  el('board').innerHTML = boardSVG();
+  renderHands();
+  renderSide();
+  if (ui.info) showModal(ui.info.title, ui.info.lines);
+}
+
+/* ---------- 弹窗 ---------- */
+var modalEl = null;
+function showModal(title, lines) {
+  if (modalEl) modalEl.remove();
+  modalEl = document.createElement('div');
+  modalEl.className = 'overlay';
+  modalEl.innerHTML = '<div class="modal"><h2>' + title + '</h2><div class="lines">' + lines.join('<br>') +
+    '</div><div class="btnrow" style="margin-top:14px"><button class="primary" id="modalClose">知道了</button></div></div>';
+  document.body.appendChild(modalEl);
+  modalEl.addEventListener('click', function (e) {
+    if (e.target === modalEl || e.target.id === 'modalClose') { modalEl.remove(); modalEl = null; ui.info = null; }
+  });
+}
+
+/* ---------- 交互 ---------- */
+function clearPending() { ui.pending = null; ui.targetCells = []; ui.targetPieces = []; }
+function clearSel() { ui.selected = null; ui.moves = []; }
+
+// 把 DOM 事件翻译成 (棋子 id, 格子) 再交给 handleClick —— 这样交互链路可以在 Node 里测
+function onBoardClick(ev) {
+  var t = ev.target;
+  var pcEl = t.closest && t.closest('[data-pid]');
+  if (pcEl) {
+    var q = findPiece(st, pcEl.getAttribute('data-pid'));
+    handleClick(pcEl.getAttribute('data-pid'), q ? q.c : null, q ? q.r : null);
+    return;
+  }
+  var cellEl = t.closest && t.closest('[data-c]');
+  if (cellEl) { handleClick(null, +cellEl.getAttribute('data-c'), +cellEl.getAttribute('data-r')); return; }
+  var bridgeEl = t.closest && t.closest('[data-bridge]');
+  if (bridgeEl) handleColumnPick(+bridgeEl.getAttribute('data-bridge'));
+}
+
+function handleClick(pid, c, r) {
+  if (st.winner) return;
+
+  // ① 有一张牌正等着选目标
+  if (ui.pending) {
+    if (pid) {
+      if (ui.targetPieces.indexOf(pid) >= 0) { pickPiece(pid); return; }
+      var q = findPiece(st, pid);
+      if (q && ui.targetCells.indexOf(K(q.c, q.r)) >= 0) { pickCell(q.c, q.r); return; }
+      setHint('这个目标不合法。', true); render(); return;
+    }
+    if (c != null) {
+      if (ui.targetCells.indexOf(K(c, r)) >= 0) { pickCell(c, r); return; }
+      if (ui.pending.stepKind === 'column') { handleColumnPick(c); return; }
+      setHint('这个格子不合法。', true); render(); return;
+    }
+    return;
+  }
+
+  // ② 布阵阶段
+  if (st.phase === 'deploy') {
+    if (c == null) return;
+    if (doSetupDeploy(st, st.deployTurn, c, r)) {
+      ui.selected = null;
+      if (st.phase === 'play') setHint('布阵结束，红方先行：先免费摸 1 张，再用 2 点 AP 行动。');
+      else setHint('继续布阵：' + sideName(st.deployTurn) + ' 还需放 ' + st.deployLeft[st.deployTurn] + ' 个。');
+    } else setHint('只能放在自己半场的空格上。', true);
+    render(); return;
+  }
+
+  // ③ 选中棋子 / 移动
+  if (pid) {
+    var p = findPiece(st, pid);
+    if (p && p.owner === st.turn) {
+      ui.selected = pid;
+      ui.moves = legalMoves(st, p);
+      if (!ui.moves.length) {
+        var why = isRooted(st, p.id) ? '（被绊马索缚住）'
+          : isFlooded(st, p.r) ? '（被水淹封锁）' : '（无合法走法）';
+        setHint(pieceLabel(p) + ' 现在不能移动 ' + why, true);
+      } else {
+        setHint('选中 ' + pieceLabel(p) + cellName(p.c, p.r) + '（' + unitName(gearKind(p)) + '）：绿点可走，红圈可吃。');
+      }
+      render(); return;
+    }
+    if (ui.selected && p) {
+      var mv = ui.moves.filter(function (x) { return x.c === p.c && x.r === p.r; })[0];
+      if (mv) { tryMove(mv); return; }
+    }
+    setHint('那不是你的棋子。', true); render(); return;
+  }
+  if (c != null && ui.selected) {
+    var m2 = ui.moves.filter(function (x) { return x.c === c && x.r === r; })[0];
+    if (m2) { tryMove(m2); return; }
+    clearSel(); setHint('已取消选择。'); render(); return;
+  }
+  clearSel(); render();
+}
+
+function tryMove(m) {
+  var pid = ui.selected;
+  var p = findPiece(st, pid);
+  if (doMove(st, pid, m)) {
+    clearSel();
+    if (st.lastEvent && st.lastEvent.type === 'guard') {
+      ui.info = {
+        title: '士 · 护驾',
+        lines: [
+          '敌方单位扑向主将，己方的 <b>士</b> 挺身而出，替主将挡下了这一击。',
+          '<b>士已阵亡</b>（进共用弃牌堆），<b>主将存活</b>。',
+          '攻击方<b>留在原地，没有前进</b>，但该次行动已消耗。',
+          '如果九宫里还有士，就还能再挡一次 —— 想拆掉这层保险，攻击方得先杀进九宫把士吃掉。'
+        ]
+      };
+      setHint('士护驾！主将存活，但九宫里少了一个士。');
+    } else {
+      setHint(st.winner ? '对局结束。' : '移动完成，剩余 ' + st.ap + ' AP。');
+      if (st.ap <= 0 && !st.winner) setHint('AP 已用尽，结束回合吧。');
+    }
+  }
+  render();
+}
+
+function handleColumnPick(col) {
+  if (!ui.pending) return;
+  if (ui.pending.stepKind === 'column') {
+    if (ui.pending.validCols.indexOf(col) < 0) { setHint('这一列不能选。', true); render(); return; }
+    pickColumn(col);
+  }
+}
+
+function cardClick(owner, idx) {
+  if (st.winner) return;
+  if (ui.discardMode && st.turn === owner) {
+    var cc = st.hands[owner].splice(idx, 1)[0];
+    st.discard.push(cc);
+    if (st.hands[owner].length <= handLimit()) {
+      ui.discardMode = false;
+      setHint('弃牌完毕，回合交给对方。');
+      doEndTurnNow();
+    } else {
+      setHint('还需弃 ' + (st.hands[owner].length - handLimit()) + ' 张。');
+    }
+    render(); return;
+  }
+  if (st.phase !== 'play' || st.turn !== owner) { setHint('现在不是这一方的行动阶段。', true); render(); return; }
+  var card = st.hands[owner][idx];
+  if (isUnitCard(card)) {
+    var cost = cardPopCost(card);
+    var cells = deployCells(st, owner, card.kind);
+    var nm = unitName(card.kind);
+    if (st.ap < 1) { setHint('AP 不足。', true); render(); return; }
+    if (specLeft(st, owner, card.kind) <= 0) {
+      setHint(nm + '每方场上最多 ' + st.specCap + ' 个（你已经有 ' + countOnBoard(st, owner, card.kind) +
+        ' 个了）。可以等它阵亡后再打出。', true);
+      render(); return;
+    }
+    if (popLeft(st, owner, cost) < 0) {
+      setHint('人口不足（' + popUsed(st, owner) + '/' + st.popCap + '）。' + nm + '需要 ' + cost +
+        ' 人口，先解散一个单位腾位置。', true);
+      render(); return;
+    }
+    if (!cells.length) {
+      setHint(card.kind === 'advisor' ? '己方九宫里没有空格了。' : '部署区里没有空格了。', true);
+      render(); return;
+    }
+    clearPending(); clearSel();
+    ui.pending = { type: 'deploy', owner: owner, handIdx: idx, card: card };
+    ui.targetCells = cells.map(function (x) { return K(x.c, x.r); });
+    setHint('点击放蓝点的位置部署' + nm + '（1 AP，占 ' + cost + ' 人口）。' +
+      (card.kind === 'advisor' ? '「士」只能部署在己方九宫内。' : ''));
+    render(); return;
+  }
+  if (card.kind === 'gear') {
+    var ps = st.pieces.filter(function (p) { return p.owner === owner && p.kind === 'pawn' && !p.gear; });
+    if (st.ap < 1) { setHint('AP 不足。', true); render(); return; }
+    if (popLeft(st, owner, 1) < 0) {
+      setHint('人口已满（' + popUsed(st, owner) + '/' + st.popCap + '）。装备会让该单位从 1 人口变成 2 人口，先腾位置。', true);
+      render(); return;
+    }
+    if (!ps.length) { setHint('场上没有可装备的小兵（需要一个没装备过的小兵）。', true); render(); return; }
+    clearPending(); clearSel();
+    ui.pending = { type: 'equip', owner: owner, handIdx: idx, card: card };
+    ui.targetPieces = ps.map(function (p) { return p.id; });
+    setHint('点击要装备的小兵（点紫圈）。该单位会从 1 人口变成 2 人口。');
+    render(); return;
+  }
+  // 锦囊
+  var cost = SPELL_COST[card.spell];
+  if (st.ap < cost) { setHint('这张锦囊需要 ' + cost + ' AP，你只剩 ' + st.ap + '。', true); render(); return; }
+  beginSpell(owner, idx, card);
+}
+
+function beginSpell(owner, idx, card) {
+  var name = card.spell;
+  var spellsNoTarget = ['急行军', '水淹', '反间计', '草船借箭', '空城计', '探马', '兵器补给'];
+  if (spellsNoTarget.indexOf(name) >= 0) {
+    if (name === '反间计' || name === '草船借箭') {
+      if (!st.hands[other(owner)].length) { setHint('对手没有手牌，这张牌打不出去。', true); render(); return; }
+    }
+    resolveSpell(owner, idx, card, []);
+    return;
+  }
+  clearPending(); clearSel();
+  ui.pending = { owner: owner, handIdx: idx, card: card, step: 0, picks: [] };
+  setupStep();
+}
+
+function setupStep() {
+  var pd = ui.pending;
+  if (!pd) return;
+  var name = pd.card.spell, owner = pd.owner;
+  ui.targetCells = []; ui.targetPieces = []; pd.stepKind = null; pd.validCols = [];
+  if (name === '增援') {
+    if (popLeft(st, owner, 1) < 0) {
+      setHint('人口已满（' + popUsed(st, owner) + '/' + st.popCap + '），这张牌打不出去。', true);
+      clearPending(); render(); return;
+    }
+    pd.stepKind = 'cell';
+    ui.targetCells = deployCells(st, owner).map(function (x) { return K(x.c, x.r); });
+    setHint('「增援」：点击部署区（蓝点）免费放一个小兵（占 1 人口）。');
+  } else if (name === '断桥') {
+    pd.stepKind = 'column';
+    pd.validCols = BRIDGE_COLS.filter(function (c) { return !hasEffect(st, 'bridge_broken', function (e) { return e.col === c; }); });
+    ui.targetCells = allCellsInCols(pd.validCols);
+    setHint('「断桥」：点击列 3 / 5 / 7 中的一座桥，断掉 ' + SPELL_DUR['断桥'] + ' 个回合。');
+  } else if (name === '浮桥') {
+    pd.stepKind = 'column';
+    pd.validCols = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    ui.targetCells = allCellsInCols(pd.validCols);
+    setHint('「浮桥」：点击任意一列，架起临时桥，持续 ' + SPELL_DUR['浮桥'] + ' 个回合。');
+  }
+  if (pd.stepKind === 'column' && !pd.validCols.length) {
+    setHint('这个效果现在没有合法目标，牌收回手里。', true);
+    clearPending(); render(); return;
+  } else if (name === '火攻') {
+    pd.stepKind = 'piece';
+    var ts = fireTargets(st, owner);
+    ui.targetPieces = ts.map(function (p) { return p.id; });
+    if (!ts.length) { setHint('没有与己方单位相邻的敌方单位，这张牌打不出去。', true); clearPending(); render(); return; }
+    setHint('「火攻」：点击紫圈的敌方单位烧掉它。');
+  } else if (name === '绊马索') {
+    pd.stepKind = 'piece';
+    var hs = st.pieces.filter(function (p) { return p.owner !== owner && p.gear === 'horse'; });
+    ui.targetPieces = hs.map(function (p) { return p.id; });
+    if (!hs.length) { setHint('场上没有敌方骑兵，这张牌打不出去。', true); clearPending(); render(); return; }
+    setHint('「绊马索」：点击敌方骑兵。');
+  } else if (name === '声东击西') {
+    pd.stepKind = 'piece';
+    var sh = shoveTargets(st, owner);
+    ui.targetPieces = sh.map(function (x) { return x.piece.id; });
+    if (!sh.length) { setHint('没有可推的敌方单位（不能推主将 / 不能因此过河）。', true); clearPending(); render(); return; }
+    setHint('「声东击西」：先点要推的敌方单位。');
+  } else if (name === '移形换位') {
+    pd.stepKind = 'piece';
+    ui.targetPieces = st.pieces.filter(function (p) { return p.owner === owner; }).map(function (p) { return p.id; });
+    setHint('「移形换位」：点第一个己方单位。');
+  }
+}
+
+function allCellsInCols(cols) {
+  var out = [];
+  cols.forEach(function (c) { for (var r = 1; r <= ROWS; r++) out.push(K(c, r)); });
+  return out;
+}
+
+function pickCell(c, r) {
+  var pd = ui.pending;
+  if (pd.type === 'deploy') { finishDeploy(pd, c, r); return; }
+  if (pd.stepKind === 'column') pd.picks.push({ col: c });   // 断桥 / 浮桥：格子映射到列
+  else pd.picks.push({ c: c, r: r });
+  advanceStep();
+}
+// 部署 / 装备的落点结算
+function finishDeploy(pd, c, r) {
+  var done = doDeploy(st, pd.owner, pd.handIdx, c, r);
+  clearPending(); clearSel();
+  setHint(done ? ('部署完成，剩余 ' + st.ap + ' AP，人口 ' + popUsed(st, pd.owner) + '/' + st.popCap + '。')
+    : '部署失败（人口已满或该位置不合法）。', !done);
+  render();
+}
+function finishEquip(pd, id) {
+  var done = doEquip(st, pd.owner, pd.handIdx, id);
+  clearPending(); clearSel();
+  setHint(done ? ('装备完成，剩余 ' + st.ap + ' AP，人口 ' + popUsed(st, pd.owner) + '/' + st.popCap + '。')
+    : '装备失败（人口已满或该单位不可装备）。', !done);
+  render();
+}
+function pickColumn(col) {
+  var pd = ui.pending;
+  pd.picks.push({ col: col });
+  advanceStep();
+}
+function pickPiece(id) {
+  var pd = ui.pending;
+  var name = pd.card.spell;
+  if (pd.type === 'equip') { finishEquip(pd, id); return; }
+  if (name === '声东击西' && pd.picks.length === 0) {
+    pd.picks.push({ pieceId: id });
+    var t = findPiece(st, id);
+    var cells = adjacent8(t.c, t.r).filter(function (x) {
+      return !pieceAt(st, x.c, x.r) && !crossesRiver(t.r, x.r);
+    });
+    pd.stepKind = 'cell';
+    ui.targetPieces = [];
+    ui.targetCells = cells.map(function (x) { return K(x.c, x.r); });
+    setHint('「声东击西」：再点要推到的空格（不能推过河）。');
+    render(); return;
+  }
+  if (name === '移形换位' && pd.picks.length === 1) {
+    var a = findPiece(st, pd.picks[0].pieceId);
+    var side = a.r <= 5 ? 'n' : 's';
+    if ((id === a.id) || (findPiece(st, id).r <= 5 ? 'n' : 's') !== side) {
+      setHint('两个单位必须在河的同一侧（防止绕过桥规则）。', true); render(); return;
+    }
+  }
+  pd.picks.push({ pieceId: id });
+  advanceStep();
+}
+
+function advanceStep() {
+  var pd = ui.pending;
+  var name = pd.card.spell;
+  var need = (name === '声东击西') ? 2 : (name === '移形换位') ? 2 : 1;
+  if (pd.picks.length >= need) {
+    resolveSpell(pd.owner, pd.handIdx, pd.card, pd.picks);
+    return;
+  }
+  setupStep();
+  render();
+}
+
+function resolveSpell(owner, idx, card, picks) {
+  var name = card.spell;
+  var cost = SPELL_COST[name];
+  if (st.ap < cost) { setHint('AP 不足。', true); clearPending(); render(); return; }
+  var ok = true, note = '';
+
+  if (name === '增援') {
+    var a = picks[0];
+    if (popLeft(st, owner, 1) < 0) { ok = false; setHint('人口已满，增援失败。', true); }
+    else {
+      st.pieces.push(mkPiece(st, owner, 'pawn', a.c, a.r, takePawnFromDeck(st)));
+      note = sideName(owner) + '用「增援」在 ' + cellName(a.c, a.r) + ' 免费部署了一个小兵';
+    }
+  } else if (name === '急行军') {
+    st.ap += 1;
+    note = sideName(owner) + '用「急行军」，本回合 +1 AP';
+  } else if (name === '断桥') {
+    addEffect(st, { type: 'bridge_broken', col: picks[0].col, left: SPELL_DUR['断桥'], by: owner });
+    note = sideName(owner) + '用「断桥」炸毁了列 ' + picks[0].col + ' 的桥（' + SPELL_DUR['断桥'] + ' 个回合）';
+  } else if (name === '浮桥') {
+    addEffect(st, { type: 'bridge_temp', col: picks[0].col, left: SPELL_DUR['浮桥'], by: owner });
+    note = sideName(owner) + '用「浮桥」在列 ' + picks[0].col + ' 架起临时桥（' + SPELL_DUR['浮桥'] + ' 个回合）';
+  } else if (name === '火攻') {
+    var t = findPiece(st, picks[0].pieceId);
+    if (!t) { ok = false; }
+    else { killByFire(st, t); note = sideName(owner) + '用「火攻」烧掉了 ' + pieceLabel(t); }
+  } else if (name === '水淹') {
+    addEffect(st, { type: 'flood', left: SPELL_DUR['水淹'], by: owner });
+    note = sideName(owner) + '用「水淹」，行 5 / 6 上的单位 ' + SPELL_DUR['水淹'] + ' 个回合内不能移动';
+  } else if (name === '绊马索') {
+    addEffect(st, { type: 'root', pieceId: picks[0].pieceId, left: SPELL_DUR['绊马索'], by: owner });
+    var tp = findPiece(st, picks[0].pieceId);
+    note = sideName(owner) + '用「绊马索」缚住了 ' + pieceLabel(tp) + '（' + SPELL_DUR['绊马索'] + ' 个回合）';
+  } else if (name === '声东击西') {
+    var tg = findPiece(st, picks[0].pieceId);
+    var dest = picks[1];
+    tg.c = dest.c; tg.r = dest.r;
+    note = sideName(owner) + '用「声东击西」把敌方 ' + pieceLabel(tg) + ' 推到 ' + cellName(dest.c, dest.r);
+  } else if (name === '移形换位') {
+    var p1 = findPiece(st, picks[0].pieceId), p2 = findPiece(st, picks[1].pieceId);
+    var tc = p1.c, tr = p1.r; p1.c = p2.c; p1.r = p2.r; p2.c = tc; p2.r = tr;
+    note = sideName(owner) + '用「移形换位」交换了两个单位';
+  } else if (name === '反间计') {
+    var h = st.hands[other(owner)];
+    var i = Math.floor(Math.random() * h.length);
+    var dc = h.splice(i, 1)[0];
+    st.discard.push(dc);
+    note = sideName(owner) + '用「反间计」，对手随机弃掉 1 张牌';
+  } else if (name === '草船借箭') {
+    var h2 = st.hands[other(owner)];
+    var i2 = Math.floor(Math.random() * h2.length);
+    var got = h2.splice(i2, 1)[0];
+    st.hands[owner].push(got);
+    note = sideName(owner) + '用「草船借箭」从对手手里抽走 1 张牌';
+  } else if (name === '空城计') {
+    addEffect(st, { type: 'shield', owner: owner, left: SPELL_DUR['空城计'], by: owner });
+    note = sideName(owner) + '用「空城计」，主将 ' + SPELL_DUR['空城计'] + ' 个回合内不会被吃';
+  } else if (name === '探马') {
+    var top = st.deck.slice(-3).reverse().map(function (c) { return '· ' + cardName(c); }).join('<br>') || '（牌库已空）';
+    var oh = st.hands[other(owner)].map(function (c) { return '· ' + cardName(c); }).join('<br>') || '（对手无手牌）';
+    ui.info = { title: '探马', lines: ['<b>牌库顶 3 张：</b>', top, '', '<b>对手手牌：</b>', oh] };
+    note = sideName(owner) + '用「探马」侦察';
+  } else if (name === '兵器补给') {
+    var gears = [];
+    st.discard.forEach(function (c, i) { if (c.kind === 'gear') gears.push({ i: i, c: c }); });
+    if (gears.length) {
+      ui.choices = gears.map(function (g) {
+        return { label: unitName(g.c.gear) + '（弃牌堆）', act: function () { takeFromDiscard(owner, g.i); } };
+      });
+      ui.choiceTitle = '兵器补给：从弃牌堆检索 1 张装备牌';
+      note = sideName(owner) + '用「兵器补给」检索装备';
+      ok = 'choice';
+    } else {
+      var found = -1;
+      for (var z = st.deck.length - 1; z >= 0; z--) if (st.deck[z].kind === 'gear') { found = z; break; }
+      if (found >= 0) {
+        var gc = st.deck.splice(found, 1)[0];
+        st.hands[owner].push(gc);
+        note = sideName(owner) + '用「兵器补给」从牌库翻出 1 张装备牌';
+      } else {
+        note = sideName(owner) + '的「兵器补给」没有找到装备牌（空过）';
+      }
+    }
+  }
+
+  if (ok) {
+    st.ap -= cost;
+    st.hands[owner].splice(idx, 1);
+    st.discard.push(card);
+    if (note) logMsg(st, owner, note);
+  }
+  clearPending(); clearSel();
+  setHint(note || '已结算。');
+  render();
+}
+
+function takeFromDiscard(owner, i) {
+  var c = st.discard.splice(i, 1)[0];
+  st.hands[owner].push(c);
+  ui.choices = null;
+  logMsg(st, owner, sideName(owner) + '从弃牌堆取回 1 张' + unitName(c.gear));
+  render();
+}
+function cardName(c) {
+  if (c.kind === 'pawn') return '兵牌';
+  if (c.kind === 'gear') return unitName(c.gear);
+  return '锦囊·' + c.spell + '（' + SPELL_COST[c.spell] + 'AP）';
+}
+
+function tryEndTurn() {
+  var p = st.turn;
+  if (st.hands[p].length > handLimit()) {
+    ui.discardMode = true;
+    setHint('手牌超过 ' + handLimit() + ' 张，请点击要弃掉的牌（还需弃 ' + (st.hands[p].length - handLimit()) + ' 张）。', true);
+    render(); return;
+  }
+  doEndTurnNow();
+}
+function doEndTurnNow() {
+  clearPending(); clearSel();
+  endTurn(st);
+  if (!st.winner) {
+    var p = st.turn;
+    setHint('轮到 ' + sideName(p) + '：已摸 1 张，AP = ' + st.ap + '。');
+  }
+  render();
+}
+
+/* ---------- 测试钩子（浏览器里用不到，供 象棋卡牌-引擎测试.js 驱动交互链路） ---------- */
+ENGINE.newGameForTest = function (mode, cap, specCap) {
+  st = newGame(mode, cap, specCap);
+  ui = {
+    selected: null, moves: [], pending: null, targetCells: [], targetPieces: [],
+    discardMode: false, info: null, choices: null, choiceTitle: '', notice: '', warn: false
+  };
+  return st;
+};
+ENGINE.uiRef = function () { return ui; };
+ENGINE.cardClick = cardClick;
+ENGINE.handleClick = handleClick;
+
+/* ---------- 事件绑定（仅浏览器） ---------- */
+if (typeof document !== 'undefined') {
+
+el('board').addEventListener('click', onBoardClick);
+
+el('popcap').addEventListener('change', function () {
+  if (!st) return;
+  st.popCap = +this.value;
+  logMsg(st, 'sys', '人口上限改为 ' + st.popCap);
+  setHint('人口上限已改为 ' + st.popCap + '。已经超编的单位不会被移除，但不能再部署或装备。');
+  render();
+});
+
+el('speccap').addEventListener('change', function () {
+  if (!st) return;
+  st.specCap = +this.value;
+  logMsg(st, 'sys', '士/象 每方上限改为 ' + st.specCap);
+  setHint('士与象的每方上限改为 ' + st.specCap + '。已经超编的单位不会被移除，但不能再部署。');
+  render();
+});
+document.addEventListener('click', function (e) {
+  var cardEl = e.target.closest ? e.target.closest('[data-hand]') : null;
+  if (cardEl) { cardClick(cardEl.getAttribute('data-owner'), +cardEl.getAttribute('data-hand')); return; }
+  var ch = e.target.closest ? e.target.closest('[data-choice]') : null;
+  if (ch) {
+    var i = +ch.getAttribute('data-choice');
+    var item = ui.choices && ui.choices[i];
+    if (item) item.act();
+    return;
+  }
+  if (e.target.id === 'btnDraw') {
+    if (st.phase === 'play' && st.ap >= 1 && !st.winner) {
+      drawCards(st, st.turn, 1); st.ap -= 1;
+      logMsg(st, st.turn, sideName(st.turn) + '花 1 AP 额外摸 1 张');
+      setHint('额外摸 1 张，剩余 ' + st.ap + ' AP。');
+      render();
+    }
+  } else if (e.target.id === 'btnDisband') {
+    var dp = ui.selected ? findPiece(st, ui.selected) : null;
+    if (dp && dp.kind !== 'king' && st.phase === 'play' && st.ap >= 1 && !st.winner) {
+      var nm = pieceLabel(dp);
+      if (doDisband(st, st.turn, dp.id)) {
+        clearSel();
+        setHint('已解散 ' + nm + '（连同装备进弃牌堆），人口降为 ' + popUsed(st, st.turn) + '/' + st.popCap + '。');
+      }
+      render();
+    }
+  } else if (e.target.id === 'btnCancel') {
+    clearPending(); clearSel(); setHint('已取消选择。'); render();
+  } else if (e.target.id === 'btnEnd') {
+    if (st.phase === 'play' && !st.winner) tryEndTurn();
+  } else if (e.target.id === 'btnRestart') {
+    startGame();
+  } else if (e.target.id === 'btnHelp') {
+    helpModal();
+  }
+});
+
+function helpModal() {
+  ui.info = {
+    title: '规则速查（v0.2.5）',
+    lines: [
+      '<b>目标</b>：吃掉对方主将即获胜。',
+      '<b>回合</b>：整顿 → 免费摸 1 张 → 花 <b>2 AP</b> → 手牌弃到 5 张。',
+      '<b>行动</b>：部署 1AP ｜ 装备 1AP ｜ 移动 1AP ｜ 出锦囊按牌面 ｜ 额外摸牌 1AP ｜ 解散 1AP。',
+      '<b>人口上限（默认 8）</b>：主将<b>不占</b>人口；小兵 <b>1</b> 人口；士 / 象 / 骑兵 / 战车 / 炮兵 <b>2</b> 人口。任何让己方人口超上限的部署或装备都不能执行。开局布阵的 3 个小兵占 3 人口。',
+      '<b>士</b>：只能部署在己方<b>九宫内</b>的空点。斜走 1 格，不出九宫。',
+      '<b>士 · 护驾</b>：敌方吃掉己方主将时，若九宫内还有士，则<b>该士代死</b>——主将存活，攻击方留在原地不前进。每个士只能挡一次。',
+      '<b>锦囊的持续回合数</b>：所有限时锦囊都用同一套计数——打出后产生一个「剩余 N 回合」标记，<b>每次打出者自己的回合开始时减 1</b>，减到 0 失效。N 就是「会影响对手接下来几个回合」。断桥 3 ／ 浮桥 2 ／ 绊马索 2 ／ 水淹 1 ／ 空城计 1，其余锦囊一律即时结算、不留持续。',
+      '<b>士 / 象 每方上限各 2 个</b>（与象棋一致，只算场上、不算手牌）。士叠加会让主将杀不死；象叠加会把三座桥全封死。',
+      '<b>象</b>：部署在部署区内。斜走 2 格（田字），<b>塞象眼</b>，<b>永不过河</b>（不认桥）。',
+      '<b>象 · 堵桥</b>：象站在<b>己方桥头</b>（列 3/5/7 的己方河岸格）时，该桥对敌方关闭——敌方既不能过河，<b>也不能吃掉这头象</b>。破解法：① 用<b>马</b>跃河绕到它背后；② 从别的桥过河后从侧面围攻。',
+      '<b>为什么要「解散」</b>：若上限 8 而你有 8 个小兵，就永远无法装备（装备后变 2 人口 = 9）。解散 1 个腾出人口，才能把别的兵升级成战车。',
+      '<b>部署区</b>：己方主将周围曼哈顿距离 ≤ 2 的空点，不过河。主将移动，部署区跟着移动。',
+      '<b>桥</b>：小兵 / 战车 / 炮兵只能在列 3 / 5 / 7 过河；<code>馬</code>可任意跃河；主将不出九宫。',
+      '<b>没有将军</b>：没有应将、没有将帅照面，吃掉主将才算数。',
+      '<b>装备</b>：装备牌只能叠在己方未装备的小兵上，一个小兵只能装一件，主将不可装备。',
+      '<b>共用牌库</b>：被吃的单位（连同装备）和用掉的锦囊都进共用弃牌堆，牌库摸空时洗回。',
+      '<b>本 demo 的简化</b>：①布阵公开进行（实体版是秘密布阵）；②「兵器补给」优先从弃牌堆检索，弃牌堆没有装备时改为从牌库随机翻一张；③「探马」只展示信息、不能调整牌序。'
+    ]
+  };
+  render();
+}
+
+/* ---------- 启动 ---------- */
+el('mode').value = 'quick';
+startGame();
+
+}   /* end if (typeof document !== 'undefined') */
+
+})();
+</script>
+</body>
+</html>
